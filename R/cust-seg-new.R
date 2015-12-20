@@ -1,24 +1,27 @@
 
+# original code
+variable_names <- c("age", "gender", "income", "kids", "ownHome", "subscribe")
+variable_distributions <- c("norm", "binom", "norm", "pois", "binom", "binom")
+
+segment_names <- c("Suburb mix", "Urban hip", "Travelers", "Moving up")
+segment_sizes <- c(100, 50, 80, 70)
+
+# means and probabilities (cols = variables, rows = segments)
+segment_means <- matrix( c(
+  40, 0.5, 55000, 2, 0.5, 0.1,
+  24, 0.7, 21000, 1, 0.2, 0.2,
+  58, 0.5, 64000, 0, 0.7, 0.05,
+  36, 0.3, 52000, 2, 0.3, 0.2 ), ncol=length(variable_names), byrow=TRUE)
+
+segment_sds <- matrix( c(
+  5, NA, 12000, NA, NA, NA,
+  2, NA, 5000, NA, NA, NA,
+  8, NA, 21000, NA, NA, NA,
+  4, NA, 10000, NA, NA, NA ), ncol=length(variable_names), byrow=TRUE)
+
+
 generateData <- function() {
-  # original code
-  variable_names <- c("age", "gender", "income", "kids", "ownHome", "subscribe")
-  variable_distributions <- c("norm", "binom", "norm", "pois", "binom", "binom")
   
-  segment_names <- c("Suburb mix", "Urban hip", "Travelers", "Moving up")
-  segment_sizes <- c(100, 50, 80, 70)
-  
-  # means and probabilities (cols = variables, rows = segments)
-  segment_means <- matrix( c(
-    40, 0.5, 55000, 2, 0.5, 0.1,
-    24, 0.7, 21000, 1, 0.2, 0.2,
-    58, 0.5, 64000, 0, 0.7, 0.05,
-    36, 0.3, 52000, 2, 0.3, 0.2 ), ncol=length(variable_names), byrow=TRUE)
-  
-  segment_sds <- matrix( c(
-    5, NA, 12000, NA, NA, NA,
-    2, NA, 5000, NA, NA, NA,
-    8, NA, 21000, NA, NA, NA,
-    4, NA, 10000, NA, NA, NA ), ncol=length(variable_names), byrow=TRUE)
   
   
   seg_df <- NULL
