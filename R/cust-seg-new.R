@@ -1,3 +1,4 @@
+library(roxygen2)
 
 # original code
 variable_names <- c("age", "gender", "income", "kids", "ownHome", "subscribe")
@@ -20,6 +21,21 @@ segment_sds <- matrix( c(
   4, NA, 10000, NA, NA, NA ), ncol=length(variable_names), byrow=TRUE)
 
 
+#' Simulate dummy marketing analtics data
+#' 
+#' @param variable_names character vector of demographic variable names
+#'        (e.g., c("age","gender"))
+#' @param variable_distributions character vector of distribution names
+#'        (e.g., c("norm", "binom"))
+#' @param segment_names character vector of segment names
+#'        (e.g., c("Suburb mix", "Urban hip"))
+#' @param segment_sizes integer vector of segment sample sizes
+#'        (e.g., c(100, 50))
+#' @param segment_means matrix of variable means and probabilities
+#' @param segment_sds matrix of variable SDs
+#' 
+#' @return seg_df data.frame of simulated data
+#'        
 generateData <- function() {
   
   
