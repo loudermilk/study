@@ -4,6 +4,9 @@ library(roxygen2)
 DEF_VAR_NAMES <- c("age", "gender", "income", "kids", "ownHome", "subscribe")
 DEF_VAR_DISTS <- c("norm", "binom", "norm", "pois", "binom", "binom")
 
+# replace strings in DEF_VAR_DISTS with functions in DEF_VAR_DISTS_FUNS
+DEF_VAR_DISTS_FUNS <- c(rnorm, rbinom, rnorm, rpois, rbinom, rbinom)
+
 DEF_SEG_NAMES <- c("Suburb mix", "Urban hip", "Travelers", "Moving up")
 DEF_SEG_SIZES <- c(100, 50, 80, 70)
 
@@ -66,28 +69,12 @@ generateData <- function(variable_names = DEF_VAR_NAMES,
     
     # within segment, iterate over variables and draw appropriate random data
     for (j in seq_along(variable_names)) { # and iterate over each variable
-      
-      if (variable_distributions[j] == "norm") { # draw random normals
-        
-        df[, j] <- rnorm(segment_sizes[i], 
-                         mean=segment_means[i,j], 
-                         sd=segment_sds[i,j])
-      
-        } else if (variable_distributions[j] == "pois") { # draw counts
-        
-          df[, j] <- rpois(segment_sizes[i], 
-                         lambda=segment_means[i, j])
-      
-        } else if (variable_distributions[j] == "binom") { # draw binomials
-        
-          df[, j] <- rbinom(segment_sizes[i], 
-                          size=1, 
-                          prob=segment_means[i, j])
-      
-        } else {
-        
-          stop("Bad segment data type: ", variable_distributions[j])
-      }
+      df[, j] <- getDistribution(variable_distributions = variable_distributions,
+                                 segment_sizes = segment_sizes,
+                                 segment_means = segment_means,
+                                 segment_sds = segment_sds, 
+                                 i, 
+                                 j)
     }
     seg_df <- rbind(seg_df, df)
   }
@@ -108,4 +95,34 @@ generateData <- function(variable_names = DEF_VAR_NAMES,
   
   return(seg_df)
   
+}
+
+getDistribution <- function(variable_distributions, 
+                            segment_sizes, 
+                            segment_means, 
+                            segment_sds, 
+                            i, 
+                            j) {
+  
+  if (variable_distributions[j] == "norm") { # draw random normals
+    
+    out_dist <- rnorm(segment_sizes[i], 
+                     mean=segment_means[i,j], 
+                     sd=segment_sds[i,j])
+    
+  } else if (variable_distributions[j] == "pois") { # draw counts
+    
+    out_dist <- rpois(segment_sizes[i], 
+                     lambda=segment_means[i, j])
+    
+  } else if (variable_distributions[j] == "binom") { # draw binomials
+    
+    out_dist <- rbinom(segment_sizes[i], 
+                      size=1, 
+                      prob=segment_means[i, j])
+  } else {
+    
+    stop("Bad segment data type: ", variable_distributions[j])
+  }
+  return(out_dist)
 }
