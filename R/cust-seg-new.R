@@ -12,16 +12,57 @@ DEF_SEG_MEANS <- matrix( c(
   40, 0.5, 55000, 2, 0.5, 0.1,
   24, 0.7, 21000, 1, 0.2, 0.2,
   58, 0.5, 64000, 0, 0.7, 0.05,
-  36, 0.3, 52000, 2, 0.3, 0.2 ), ncol=length(variable_names), byrow=TRUE)
+  36, 0.3, 52000, 2, 0.3, 0.2 ), ncol=length(DEF_VAR_NAMES), byrow=TRUE)
 
 DEF_SEG_SDS <- matrix( c(
   5, NA, 12000, NA, NA, NA,
   2, NA, 5000, NA, NA, NA,
   8, NA, 21000, NA, NA, NA,
-  4, NA, 10000, NA, NA, NA ), ncol=length(variable_names), byrow=TRUE)
+  4, NA, 10000, NA, NA, NA ), ncol=length(DEF_VAR_NAMES), byrow=TRUE)
+
+#' @title Generate dummy segment data
+#' 
+#' @param variable_distributions character vector of distribution names
+#' @param segment_sizes integer vector of segment sample sizes
+#' @param segment_means numeric vector of mean and prob arguments
+#' @param segment_sds numeric vector of SDs
+#' @param i integer segment index
+#' @param j integer variable index
+#' 
+#' @return out_dist vector
+generateSegData <- function(variable_distributions, 
+                            segment_sizes,
+                            segment_means,
+                            segment_sds, 
+                            i, 
+                            j) {
+  
+  if (variable_distributions[j] == "norm") { # draw random normals
+    
+    out_dist <- rnorm(segment_sizes[i], 
+                     mean=segment_means[i,j], 
+                     sd=segment_sds[i,j])
+    
+  } else if (variable_distributions[j] == "pois") { # draw counts
+    
+    out_dist <- rpois(segment_sizes[i], 
+                     lambda=segment_means[i, j])
+    
+  } else if (variable_distributions[j] == "binom") { # draw binomials
+    
+    out_dist <- rbinom(segment_sizes[i], 
+                      size=1, 
+                      prob=segment_means[i, j])
+    
+  } else {
+    
+    stop("Bad segment data type: ", variable_distributions[j])
+  }
+  return(out_dist)
+}
 
 
-#' @title Simulate dummy marketing analtics data
+#' @title Simulate dummy marketing analytics data
 #' 
 #' @description Return data.frame of simulated, segmented marketing data
 #' 
@@ -67,27 +108,12 @@ generateData <- function(variable_names = DEF_VAR_NAMES,
     # within segment, iterate over variables and draw appropriate random data
     for (j in seq_along(variable_names)) { # and iterate over each variable
       
-      if (variable_distributions[j] == "norm") { # draw random normals
-        
-        df[, j] <- rnorm(segment_sizes[i], 
-                         mean=segment_means[i,j], 
-                         sd=segment_sds[i,j])
-      
-        } else if (variable_distributions[j] == "pois") { # draw counts
-        
-          df[, j] <- rpois(segment_sizes[i], 
-                         lambda=segment_means[i, j])
-      
-        } else if (variable_distributions[j] == "binom") { # draw binomials
-        
-          df[, j] <- rbinom(segment_sizes[i], 
-                          size=1, 
-                          prob=segment_means[i, j])
-      
-        } else {
-        
-          stop("Bad segment data type: ", variable_distributions[j])
-      }
+      df[, j] <- generateSegData(variable_distributions = variable_distributions, 
+                      segment_sizes = segment_sizes, 
+                      segment_means = segment_means,
+                      segment_sds = segment_sds,
+                      i,
+                      j)
     }
     seg_df <- rbind(seg_df, df)
   }
@@ -108,4 +134,26 @@ generateData <- function(variable_names = DEF_VAR_NAMES,
   
   return(seg_df)
   
+}
+
+
+#' @title Analyze target variable by segments and function
+#' 
+#' @param df data.frame
+#' @param var_colname character name of target variable to perform function on
+#' @param segment_colnames character vector of columns for segmentation
+#' @param fun function to apply to target column
+#' 
+#' @return data.frame
+analyzeVarBySegs <- function(df, var_colname, segment_colnames, fun) {
+  createFormula <- function(var_colname, segment_colnames) {
+    fo_str <- paste(var_colname, "~ ")
+    segments <- paste(segment_colnames, collapse = " + ")
+    fo_str <- paste0(fo_str, segments)
+    fo <- formula(fo_str)
+    return(fo)
+  }
+  
+  fo <- createFormula(var_colname, segment_colnames)
+  return(aggregate(fo, data=df, fun))
 }
