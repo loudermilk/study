@@ -97,6 +97,16 @@ generateData <- function(variable_names = DEF_VAR_NAMES,
   
 }
 
+#' @title Generate a random distribution given parameters
+#' 
+#' @param variable_distributions character vector of distribution 'names'
+#' @param segment_sizes integer vector of sample sizes
+#' @param segment_means numeric vector of means and probabilities
+#' @param segment_sds numeric vector of SDs
+#' @param i integer segment index
+#' @param j integer variable index
+#' 
+#' @return vector of simulated variable values
 getDistribution <- function(variable_distributions, 
                             segment_sizes, 
                             segment_means, 
