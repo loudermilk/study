@@ -15,13 +15,13 @@ DEF_SEG_MEANS <- matrix( c(
   40, 0.5, 55000, 2, 0.5, 0.1,
   24, 0.7, 21000, 1, 0.2, 0.2,
   58, 0.5, 64000, 0, 0.7, 0.05,
-  36, 0.3, 52000, 2, 0.3, 0.2 ), ncol=length(variable_names), byrow=TRUE)
+  36, 0.3, 52000, 2, 0.3, 0.2 ), ncol=length(DEF_VAR_NAMES), byrow=TRUE)
 
 DEF_SEG_SDS <- matrix( c(
   5, NA, 12000, NA, NA, NA,
   2, NA, 5000, NA, NA, NA,
   8, NA, 21000, NA, NA, NA,
-  4, NA, 10000, NA, NA, NA ), ncol=length(variable_names), byrow=TRUE)
+  4, NA, 10000, NA, NA, NA ), ncol=length(DEF_VAR_NAMES), byrow=TRUE)
 
 
 #' @title Simulate dummy marketing analtics data
