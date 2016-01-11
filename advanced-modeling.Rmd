@@ -1,0 +1,121 @@
+---
+title: "advanced-marketing-applications"
+author: "Brandon C. Loudermilk"
+date: "January 6, 2016"
+output: html_document
+---
+
+PCA (Principle Components Analysis) attempts to find uncorrelated linear dimensions that capture maximal variance in the data
+
+```{r}
+brand.ratings <- read.csv("http://goo.gl/IQl8nc")
+head(brand.ratings)
+summary(brand.ratings)
+
+brand.sc <- brand.ratings
+brand.sc[, 1:9] <- scale(brand.ratings[, 1:9])
+summary(brand.sc)
+
+library(corrplot)
+corrplot(cor(brand.sc[, 1:9]), order="hclust")
+
+brand.mean <- aggregate(. ∼ brand, data=brand.sc, mean)
+brand.mean
+
+rownames(brand.mean) <- brand.mean[, 1] # use brand for the row names
+brand.mean <- brand.mean[, -1] # remove brand name column
+
+library(gplots)
+library(RColorBrewer)
+heatmap.2(as.matrix(brand.mean), col=brewer.pal(9, "GnBu"), trace="none", key=FALSE, dend="none",main="\n\n\n\n\nBrand attributes")
+
+
+```
+
+PCA recomputes a set of variables in terms of linear equations, known as components,
+that capture linear relationships in the data [87]. The first component captures
+as much of the variance as possible from all variables as a single linear function. The
+second component captures as much variance as possible that remains after the first
+component. This continues until there are as many components as there are variables.
+We can use this process to reduce data complexity by retaining and analyzing
+only a subset of those components—such as the first one or two components—that
+explain a large proportion of the variation in the data.
+
+```{r}
+set.seed(98286)
+xvar <- sample(1:10, 100, replace=TRUE)
+yvar <- xvar
+yvar[sample(1:length(yvar), 50)] <- sample(1:10, 50, replace=TRUE)
+zvar <- yvar
+zvar[sample(1:length(zvar), 50)] <- sample(1:10, 50, replace=TRUE)
+my.vars <- cbind(xvar, yvar, zvar)
+
+plot(yvar ∼ xvar, data=jitter(my.vars))
+cor(my.vars)
+
+library(nsprcomp)
+my.pca <- prcomp(my.vars)
+summary(my.pca)
+
+
+cor(my.pca$x)
+
+biplot(my.pca)
+
+
+```
+
+
+```{r}
+library(nFactors)
+nScree(brand.sc[, 1:9])
+eigen(cor(brand.sc[, 1:9]))$values
+factanal(brand.sc[, 1:9], factors=2)
+factanal(brand.sc[, 1:9], factors=3)
+
+
+library(GPArotation)
+(brand.fa.ob <- factanal(brand.sc[, 1:9], factors=3, rotation="oblimin"))
+
+library(gplots)
+library(RColorBrewer)
+heatmap.2(brand.fa.ob$loadings, col=brewer.pal(9, "Greens"), trace="none", key=FALSE, dend="none", Colv=FALSE, cexCol = 1.2,main="\n\n\n\n\nFactor loadings for brand adjectives")
+
+
+library(semPlot)
+semPaths(brand.fa.ob, what="est", residuals=FALSE, cut=0.3, posCol=c("white", "darkgreen"), negCol=c("white", "red"), edge.label.cex=0.75, nCharNodes=7)
+
+```
+
+In addition to estimating the factor structure, EFA will also estimate latent factor
+scores for each observation. In the present case, this gives us the best estimates of
+each respondent’s latent ratings for the “value,” “leader,” and “latest” factors.We can
+then use the factor scores to determine brands’ positions on the factors. Interpreting
+factors eliminates the separate dimensions associated with the manifest variables,
+allowing us to concentrate on a smaller, more reliable set of dimensions that map to
+theoretical constructs instead of individual items.
+
+```{r}
+brand.fa.ob <- factanal(brand.sc[, 1:9], factors=3, rotation="oblimin", scores="Bartlett")
+brand.scores <- data.frame(brand.fa.ob$scores) # get the factor scores
+brand.scores$brand <- brand.sc$brand # get the matching brands
+head(brand.scores)
+
+brand.fa.mean <- aggregate(. ∼ brand, data=brand.scores, mean)
+
+rownames(brand.fa.mean) <- brand.fa.mean[, 1] # brand names
+brand.fa.mean <- brand.fa.mean[, -1]
+names(brand.fa.mean) <- c("Leader", "Value", "Latest") # factor names
+brand.fa.mean
+
+heatmap.2(as.matrix(brand.fa.mean), col=brewer.pal(9, "GnBu"), trace="none", key=FALSE, dend="none", cexCol=1.2, main="\n\n\n\n\n\nMean factor score by brand")
+
+```
+
+MDS is a family of procedures that can also be used to find lower-dimensional representations
+of data. Instead of extracting underlying components or latent factors,
+MDS works instead with distances (also known as similarities). MDS attempts to
+find a lower-dimensional map that best preserves all the observed similarities between
+items.
+
+

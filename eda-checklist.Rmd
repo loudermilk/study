@@ -27,7 +27,7 @@ types???as necessary.
 
 7. **Get summary stats** - Run `summary()` and look for unexpected values, especially min and max that are unexpected.
 
-8. **Get detailed summary** - Load the **psych** library and examine basic descriptives with `describe()`. Reconfirm the observation counts by checking that n is the same for each variable, and check trimmed mean and skew (if relevant).
+8. **Get detailed summary** - Load the **psych** library and examine basic descriptives with `describe()`. Reconfirm the observation counts by checking that n is the same for each variable, and check trimmed mean and skew (if relevant). **NEED MORE DESCRIPTION HERE**
 
 9. **Test for normality** - Use `qqnorm()` and `qqline()` to test normality assumptions. 
 
@@ -35,7 +35,7 @@ types???as necessary.
 
 Variable | Common Transform
 -------- | ----------------
-sales, revenue, income, price | `log(x`
+sales, revenue, income, price | `log(x)`
 distance | `1/x`, `1/x^2`, `log(x)`
 market share, preference share | `(e^x)/(1+e^x)`
 right-tailed dist | `sqrt(x)`, `log(x)` caution log(x<=0)
@@ -50,6 +50,17 @@ skewed distributions before computing correlations or creating scatterplots.
 
 14. **Multivariable correlation** - For multiple variable correlation compute a correlation matrix by calling `cor()` with multiple variables. Packages **corrplot** and **gplots** provide `corplott()` and `corrplot.mixed()` to plot graphical vizualiations of correlation.
 
+15. We recommend to report—and when appropriate, to chart—
+confidence intervals whenever feasible rather than reporting single point estimates.
+By reporting CIs, one presents a more complete and accurate description to stakeholders.
+
+16. Use anova for nested model comparison. If two models are nested (e.g., `m1 = y ~ a + b` and `m2 = y ~ a`) you can determine if there are significant differences in fit between two different models -  `anova(m1,m2)`
+
+17. Visualize group confidence intervals. Use **multcomp** package's function `glht()` as input to `plot()` will plot the means and 95% CI for all segments.
+
+18. use `step()` to automatically iterate through model permutations and testing them to identify the best model.
+
+19. Basics of Bayesian ANOVA - install.packages("BayesFactor"). Use the `lmBF(formula, data)` command to specify the ANOVA models. Bayes factor analysis via `seg.bf1 / seg.bf2`
 
 
 

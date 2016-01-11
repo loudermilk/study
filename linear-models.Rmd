@@ -1,0 +1,144 @@
+---
+title: "linear-models"
+author: "Brandon C. Loudermilk"
+date: "January 4, 2016"
+output: html_document
+---
+
+Satisfaction driver analysis - using survey data, model product satisfaction in relationship to specific elements of the product.
+
+Use case: Customers who visited an amusement park complete a survey in which they report their levels of satisfaction with different aspects of their experience as well as their overall satisfaction. 
+
+Goal: Identify drivers that most correlate with overall satisfaction.
+
+**Simulate Data**
+```{R}
+set.seed(08226)
+nresp <- 500
+
+# generate halo effect for each customer
+halo <- rnorm(n=nresp, mean = 0, sd = 5)
+
+# generate responses to each question
+rides <- floor(halo + rnorm(n=nresp, mean=80, sd=3)+1)
+games <- floor(halo + rnorm(n=nresp, mean=70, sd=7)+5)
+wait <- floor(halo + rnorm(n=nresp, mean=65, sd=10)+9)
+clean <- floor(halo + rnorm(n=nresp, mean=85, sd=2)+1)
+
+# verify responses are correlated
+cor(rides, games)
+
+# Additional survey information
+distance <- rlnorm(n=nresp, meanlog=3, sdlog=1)
+num.child <- sample(x=0:5, size=nresp, replace=TRUE,prob=c(0.3, 0.15, 0.25, 0.15, 0.1, 0.05))
+weekend <- as.factor(sample(x=c("yes", "no"), size=nresp, replace=TRUE,prob=c(0.5,0.5)))
+
+# Overall satisfaction is a function of
+overall <- floor(halo + 0.5*rides + 0.1*games + 0.3*wait + 0.2*clean +
+0.03*distance + 5*(num.child==0) + 0.3*wait*(num.child>0) +
+rnorm(n=nresp, mean=0, sd=7) - 51)
+
+# Create data.frame & clean up
+sat.df <- data.frame(weekend, num.child, distance, rides, games, wait, clean, overall)
+rm(nresp, weekend, distance, num.child, halo, rides, games, wait, clean, overall)
+
+
+```
+
+Fitting linear model
+```{r}
+summary(sat.df)
+
+gpairs::gpairs(sat.df)
+
+# all are normal except distance, need to transform
+sat.df$logdist <- log(sat.df$distance)
+
+# concern for correlation of independent variables
+corrplot::corrplot.mixed(cor(sat.df[ , c(2, 4:9)]), upper="ellipse")
+
+#inspection shows moderate to strong correlation, but nothing over 0.8 so safe to proceed
+
+# fit a linear model
+m1 <- lm(overall ∼ rides, data=sat.df)
+
+plot(overall ∼ rides, data=sat.df, xlab="Satisfaction with Rides", ylab="Overall Satisfaction")
+abline(m1, col='blue')
+
+```
+
+Fitting linear models with multiple predictors
+```{r}
+m2 <- lm(overall ∼ rides + games + wait + clean, data=sat.df)
+
+library(coefplot) # install if necessary
+coefplot::coefplot(model = m2, 
+                   intercept=FALSE, 
+                   outerCI=1.96, 
+                   lwdOuter=1.5, 
+                   ylab="Rating of Feature", 
+                   xlab="Association with Overall Satisfaction")
+
+
+```
+Which model is better?
+```{r}
+#compared the r-squared values
+summary(m1)$r.squared
+summary(m2)$r.squared
+
+#but we should contro for multiple predictors so use adjusted
+
+summary(m1)$adj.r.squared
+summary(m2)$adj.r.squared
+
+plot(sat.df$overall, fitted(m1), col="red",xlim=c(0,100), ylim=c(0,100),xlab="Actual Overall Satisfaction", ylab="Fitted Overall Satisfaction")
+points(sat.df$overall, fitted(m2), col="blue")
+legend("topleft", legend=c("model 1", "model 2"), col=c("red", "blue"), pch=1)
+
+anova(m1,m2)
+
+```
+
+sometimes we may want to normalize coefficients for comparison of relative contributions in predicting outcome variable
+
+```{r}
+sat.std <- sat.df[,-3]
+sat.std[,3:8] <- scale(sat.std[,3:8])  
+  
+head(sat.df)
+head(sat.std)
+
+#standardized variables should have mean = 0
+summary(sat.std)
+
+```
+
+
+```{r}
+m3 <- lm(overall ∼ rides + games + wait + clean +weekend + logdist + num.child, data = sat.std)
+summary(m3)
+
+sat.std$has.child <- factor(sat.std$num.child > 0)
+
+m6 <- lm(overall ∼ rides + games + wait + clean + weekend + logdist + has.child + rides:has.child + games:has.child + wait:has.child + clean:has.child + rides:weekend + games:weekend + wait:weekend + clean:weekend, data=sat.std)
+
+
+```
+
+Using a Bayesian linear model
+```{r}
+m7.bayes <- MCMCregress(overall ∼ rides + games + wait + clean + logdist + has.child + wait:has.child, data=sat.std)
+
+summary(m7.bayes)
+
+```
+
+Second, the Bayesian output does not include statistical tests or p-values; null
+hypothesis tests are not emphasized in the Bayesian paradigm. Instead, to determine
+whether a parameter is likely to be non-zero (or to compare it to any
+other value), check the 2.5 and 97.5 %’iles and directly interpret the credible interval.
+For instance, in the quantiles above, the 2.5–97.5 %’iles for logdist range
+(−0.01092,0.06869) and we conclude that the coefficient for logdist is not credibly
+different from 0 at a level of 95% confidence. However, all of the other coefficients
+are different from zero.
