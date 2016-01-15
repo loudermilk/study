@@ -5,140 +5,299 @@ date: "January 4, 2016"
 output: html_document
 ---
 
-Satisfaction driver analysis - using survey data, model product satisfaction in relationship to specific elements of the product.
+**Satisfaction Driver Analysis**: Use a linear model on survey data to model product satisfaction in relationship to specific elements of the product.
 
-Use case: Customers who visited an amusement park complete a survey in which they report their levels of satisfaction with different aspects of their experience as well as their overall satisfaction. 
+**Use case**: Customers who purchased "SqueakyClean" laundry detergent completed an in-store survey in which they self-reported their levels of satisfaction with different aspects of their product experience as well as their overall satisfaction with SqueakyClean laundry detergent. 
 
-Goal: Identify drivers that most correlate with overall satisfaction.
+**Goal**: Identify drivers that most correlate with overall product satisfaction in order to inform business decisions,
 
-**Simulate Data**
+**Simulate Data**: We will begin by simulating prototypical product satisfaction survey data. In this study, participants who have purchased SqueakyClean laundry detergent are given a short, in-store survey, in which they rate their overall satisfaction with the product as well as their satisfaction with various aspects of the laundry detergent, for example, ability to get clothes clean, the aroma or fragrance of the detergent, etc. Because individual participants typically answer satisfaction questions similarly in what is known as a halo effect, we simulate this in our data by sampling from a normal distribution, as a base score or halo, from which all the individual satisfaction scores are derived.
+
+
 ```{R}
-set.seed(08226)
-nresp <- 500
+# Set a seed for random sampling
+# this will ensure reproducibility of results
+set.seed(555)
+num_respondents <- 500
 
-# generate halo effect for each customer
-halo <- rnorm(n=nresp, mean = 0, sd = 5)
+# Generate halo effect for each customer becuase
+# respondents tend to mark survey-items similarly
+halo <- rnorm(n=num_respondents, mean = 0, sd = 5)
 
-# generate responses to each question
-rides <- floor(halo + rnorm(n=nresp, mean=80, sd=3)+1)
-games <- floor(halo + rnorm(n=nresp, mean=70, sd=7)+5)
-wait <- floor(halo + rnorm(n=nresp, mean=65, sd=10)+9)
-clean <- floor(halo + rnorm(n=nresp, mean=85, sd=2)+1)
+# Generate responses to each question based on indiv's halo score
+# Use different means and SDs to simulate actual data, then floor
+# the results to simulate an integer score from 1 to 100.
+clean <- floor(halo + rnorm(n=num_respondents, mean=75, sd=3)+1)
+aroma <- floor(halo + rnorm(n=num_respondents, mean=80, sd=7)-7)
+value <- floor(halo + rnorm(n=num_respondents, mean=65, sd=10)+0)
+color <- floor(halo + rnorm(n=num_respondents, mean=90, sd=4)-8)
 
-# verify responses are correlated
-cor(rides, games)
+# Verify responses are correlated (b/c of halo effect)
+cor(clean, aroma)
 
 # Additional survey information
-distance <- rlnorm(n=nresp, meanlog=3, sdlog=1)
-num.child <- sample(x=0:5, size=nresp, replace=TRUE,prob=c(0.3, 0.15, 0.25, 0.15, 0.1, 0.05))
-weekend <- as.factor(sample(x=c("yes", "no"), size=nresp, replace=TRUE,prob=c(0.5,0.5)))
+# Respondents also completed demographic questions including:
+# distance from nearest store, number of children, and whether
+# customers typical purchase detergent with a promo or coupon.
+distance <- rlnorm(n=num_respondents, meanlog=1, sdlog=1)
+num_child <- sample(x=0:5, 
+                    size=num_respondents, 
+                    replace=TRUE, 
+                    prob=c(0.3, 0.15, 0.25, 0.15, 0.1, 0.05))
+promo <- as.factor(sample(x=c("yes", "no"), size=num_respondents, replace=TRUE,prob=c(0.5,0.5)))
 
 # Overall satisfaction is a function of
-overall <- floor(halo + 0.5*rides + 0.1*games + 0.3*wait + 0.2*clean +
-0.03*distance + 5*(num.child==0) + 0.3*wait*(num.child>0) +
-rnorm(n=nresp, mean=0, sd=7) - 51)
+overall <- floor(halo + 
+                   0.5*clean + 
+                   0.1*aroma + 
+                   0.3*value + 
+                   0.2*color -
+                   0.03*distance + 
+                   0.4*(promo == "yes") +
+                   5*(num_child>=3) -
+                   3 * (num_child>=4) * distance/5 +  
+                   rnorm(n=num_respondents, mean=0, sd=7) - 35)
 
 # Create data.frame & clean up
-sat.df <- data.frame(weekend, num.child, distance, rides, games, wait, clean, overall)
-rm(nresp, weekend, distance, num.child, halo, rides, games, wait, clean, overall)
-
+sat_df <- data.frame(promo, num_child, distance, clean, aroma, value, color, overall)
 
 ```
 
-Fitting linear model
+**Initial Data Inspection**
+Before we fit a model, let's examine our simulated data. First we examine the structure of our data with a call to `str()`. We see that `sat_df` is a "data.frame" object consisting of 500 rows/observations across 8 columns/features. Columns include 6 numeric variables (distance, clean, aroma, value, color, overall), an integer variable (num_children), and a two-level factor (promo). Calling function `summary()` calculates discriptive statistics for each of the variables. Here we observe, roughly half of respondents use a promo/coupon, reponspondents have 0 to 5 children, most customers travel 3-4 miles to purchase their laundry detergent, and satisfaction scores have similar means and medians suggesting a symmetric distribution.
+
 ```{r}
-summary(sat.df)
+str(sat_df)
+summary(sat_df)
+```
 
-gpairs::gpairs(sat.df)
+Next, we want to examine the distributions of individual variables as well as get a handle on the relationship between pairs of variables. Calling `gpairs()` on our data displays a chart matrix showing frequency histograms for each of the individual variables (on the diagonal). Here we see that *promo* follows a bivariate distribution, `num_child` appears linear, the satisfaction variables follow roughly normal distributions, but the `distance` variable is extremely skewed. Because linear models assume normality, we should transform `distance` via `log()` and add the result as an additional column in our data.frame. The `gpairs` graphs show positive correlations among the satisfaction variables as evidenced by the diagonal elliptical clusters of data on the xy plots. Because linear models assume independence of features, this correlation among variables warrants concern. From the *corrplot* package, calling function `corrplot.mixed()` displays a correlation matrix of graphs, providing additional information including the correlation coefficients. In the present case we observe moderate to strong positive correlations, but no variables show high correlation (> 0.80) which would violate the independence assumptions of the general linear model.
 
-# all are normal except distance, need to transform
-sat.df$logdist <- log(sat.df$distance)
+```{r}
+# Examine relationships of all paired variables
+# Q1: Does each variable have a reasonable distribution?
+# A1: All are normal except distance, which needs transformation to satifsy assumptions
+library(gpairs)
+gpairs::gpairs(sat_df)
 
-# concern for correlation of independent variables
-corrplot::corrplot.mixed(cor(sat.df[ , c(2, 4:9)]), upper="ellipse")
+# Transform to log(distance)
+sat_df$logdist <- log(sat_df$distance)
 
-#inspection shows moderate to strong correlation, but nothing over 0.8 so safe to proceed
+# A common issue with marketing data and especially satisfaction
+# surveys is that variables may be highly correlated with one another.
 
-# fit a linear model
-m1 <- lm(overall ∼ rides, data=sat.df)
+# Concern for correlation of independent variables
+# Q2: Are any pairs highly correlated?
+# A2: Inspection shows moderate to strong correlation, but nothing over 0.8 so safe to proceed
+corrplot::corrplot.mixed(cor(sat_df[ , c(2, 4:9)]), upper="ellipse")
+```
 
-plot(overall ∼ rides, data=sat.df, xlab="Satisfaction with Rides", ylab="Overall Satisfaction")
+**Fitting Linear Model**
+In the previous section we performed an initial inspection of the data which identified a single variable *distance* with a non-normal distribution, which we rectified by log transformation. Now we fit a linear model to the data by calling `lm(formula, data)`, passing in a formula as the first argument. To estimate overall satisfaction as a linear function of cleaning ability, we call:
+
+```{r}
+# Fit a linear model with the most correlating independent variable
+(m1 <- lm(formula = overall ∼ clean, data = sat_df))
+```
+
+When `lm()` is called, it computes the best fit line between the variables `sat_df$overall` and `sat_df$clean` - the coefficients (i.e. the y intercept and the slope of the line) are displayed. We observe a slope of 1.7 for the `clean` variable, indicating that for each point increase in `clean` we expect a corresponding 1.62 pt increase in overall satisfaction. The intercept (-76.3) indicates the point at which the line crosses the y axis. Taken together they define y as a linear function of x: `y = mx + b` or `f(x) = 1.62x - 76.3` thus allowing us to predict an overall satisfaction level given a user's clean rating. For example, a user who rated clean at 90 pts would be expected to provide an overall satisfaction score of `1.62 * 90 - 76.3 = 69.5` points.
+
+Additional information about the fit model can be displayed by inspecting object `m1` via `summary()`. In addition to the estimated coefficients, we also observe their **standard error** - *a measure of uncertainty in the predicted coefficients*. The t value and PR(>|t|) report the calculated *t tests* and *p scores* with \*'s indicating significance at typical alpha levels. Calling `confint(m1)` will display the 95% confidence intervals for the model's coefficient. From `summary()` we also observe the fit model's **residuals** - *the difference between a model's predicted value and it's actual observed value*. The final section reports **R-squared** - *a measure of how much variation of the dependent variable is captured by the model*. In the present case, we see am R-squared of 0.559 indicating that the single variable *clean* accounts for 56% of the variation observed in overall satisfaction ratings. The reported F-statistic and p-value indicate a rejection of the null hypothesis that there are no differences in explantory differences between model m1 and a model with no independent variables.
+
+```{r}
+# Display summary information about fit model
+summary(m1)
+
+# Display confidence intervals for model
+confint(m1)
+```
+
+After initial inspection of the model fit we should determine whether any GLM assumptions are violated. First, we must verify that relationship between the predictor(s) and outcome variables is linear. If the relationship is non-linear then systematic errors will be made by the model. As illustrated below, we observe a linear relationship between clean and overall represented by the best fit line shown in blue.
+
+
+```{r}
+par(mfrow=c(1,1))
+plot(overall ∼ clean, data=sat_df, xlab="Satisfaction with Clean", ylab="Overall Satisfaction")
 abline(m1, col='blue')
 
 ```
 
-Fitting linear models with multiple predictors
+We can evaluate additional assumptions by calling `plot` on the model fit object.
+
 ```{r}
-m2 <- lm(overall ∼ rides + games + wait + clean, data=sat.df)
 
-library(coefplot) # install if necessary
-coefplot::coefplot(model = m2, 
-                   intercept=FALSE, 
-                   outerCI=1.96, 
-                   lwdOuter=1.5, 
-                   ylab="Rating of Feature", 
-                   xlab="Association with Overall Satisfaction")
-
-
+# Print all graphs in a 2x2 grid
+par(mfrow=c(2,2))
+plot(m1)
 ```
-Which model is better?
+
+The first chart (upper left) plots fitted values versus residuals. We shouldn't observe any correlation which is consistent with the proposition that residuals are due to random error (rather than systematic error). Outliers in this and the other plots are indicated by tagging the data with its name (in this case, the row number). 
+
+The next chart (lower left) plots fitted values vs. square root of the standardized residual. As with the previous chart, we shouldn't see any correlation in this data. FYI - A common pattern in residual plots is a cone or funnel, where the range of errors gets progressively larger for larger fitted values. This is called **heteroskedasticity** and is a violation of linear model assumptions.
+
+The following chart (upper right) is a Normal QQ Plot which helps you determine whether the residuals follow a normal distribution.
+Here, we expect points to be close to the diagonal line else normality assumptions are violated.
+
+The final chart (lower right) help identify potential **outliers** -  *observations that may come from a different distribution than the others*. One measure of the leverage of a data point is Cook’s distance, an estimate of how much predicted (y) values would change if the model were re-estimated with that point eliminated from the data. This graph plots the leverage of each point, a measure of how much influence the point has on the model coefficients. When a point has a high residual and high leverage, it indicates that the point has both a different pattern (residual) and undue influence (leverage). Outliers should be manually inspected.
+
 ```{r}
-#compared the r-squared values
+# Manually inspect outliers
+sat_df[c(210,218,377),]
+```
+
+In the present case, outlier inspection doesn't reveal any anomolous data, so we keep these data in our analysis and fitted model.
+
+
+**Fitting Linear Models with Multiple Predictors**
+
+In the previous lesson we fit a linear model with a single predictor variable; in this section we will fit a linear model with multiple predictors. Specifically, we will attempt to identify which features(e.g., clean, aroma, etc.) are most correlated with overall satisfaction levels. Do accomplish this we pass an extended formula to function `lm()`. Below, we fit a model predicting *overall* satisfaction as a linear function of *clean*, *aroma*, *value*, and *color*; we do this by writing by passing `lm()` the R formula, `formula = overall ~ clean + aroma + value + color`. 
+
+Inspection of the fit model `m2` shows a better fit than `m1` as reflected by the larger R-squared metric (0.704 vs. 0.559) explaining an additional 14% of the overall variation observed in the dependent variable. We notice a smaller residual standard error in `m2` indicating greater accuracy in prediction. We also see that all four features in model `m2` are significant. We notice, however, that the coefficient for *clean* differs between models `m1` and `m2`. The reason for this difference is because some of the additional variables that were added to model `m2` are capturing some of the variation originally captured in its entirity from the single-variable *clean* in model `m1`. That is to say variable *clean* is colinear with the other independent variables in the model.
+
+
+```{r}
+m2 <- lm(overall ∼ clean + aroma + value + color, data=sat_df)
+summary(m2)
+```
+
+It is often useful to plot the coefficients. As illustrated below, we see that variable *clean* is estimated to be the best predictor of overall satisfaction, followed by *color*, *value*, and *aroma*.
+
+```{r}
+library(coefplot) # install if necessary
+coefplot(m2, intercept=FALSE, outerCI=1.96, lwdOuter=1.5, ylab="Rating of Feature", xlab="Association with Overall Satisfaction")
+```
+
+Now that we have informally compared models `m1` and `m2`, we can proceed with a more grounded comparison. Based on comparison of R-squared values we see that model `m2` explains more variation than `m1`. This is not unexpected however, as models with more variables typically account for more variation. A more accurate test is to compare the adjusted r-squared values which adjusts for the number of predictors.
+
+```{r}
+# Compare the amt of variation explained by models
 summary(m1)$r.squared
 summary(m2)$r.squared
 
-#but we should contro for multiple predictors so use adjusted
-
+# Use adjusted r-squared when comparing multivariate models
 summary(m1)$adj.r.squared
 summary(m2)$adj.r.squared
+```
+In the present data, even after adjusting for multiple predictors we see that model `m2` explains about 14% more of the variation observed in overall satisfaction. Next we plot the two models, illustrating a tighter clustering of predicted vs observed for model `m1` (blue) compared to `m2` (red). 
 
-plot(sat.df$overall, fitted(m1), col="red",xlim=c(0,100), ylim=c(0,100),xlab="Actual Overall Satisfaction", ylab="Fitted Overall Satisfaction")
-points(sat.df$overall, fitted(m2), col="blue")
-legend("topleft", legend=c("model 1", "model 2"), col=c("red", "blue"), pch=1)
+```{r}
+plot(sat_df$overall, fitted(m1), col="red", xlim=c(0,100), ylim=c(0,100), xlab="Actual Overall Satisfaction", ylab="Fitted Overall Satisfaction")
+points(sat_df$overall, fitted(m2), col="blue")
+legend("bottomright", legend=c("model 1", "model 2"), col=c("red", "blue"), pch=1)
+```
 
-anova(m1,m2)
+A more formal method for comparing model fit is to use a statistical test, specifically `anova()`. Here we see that model `m2` has a very large F score (80.865) and correspondingly low p-value indicating that model `m1` significantly improves upon model `m2`.
+
+```{r}
+anova(m1, m2)
+```
+
+In the present case, it is relatively easy to compare the coefficients of *clean*, *aroma*, *value*, and *color* because they are all on a 1-100 pt scale. But how do we compare coefficients for variables that are on different scales? The answer is that you need to normalize or standardize the scales. A common standardization procedure converts values to zero-centered units of standard deviation. The mean is subtracted from an observations value, which is then divided by the standard deviation. This can be accomplished with the `scale()` function. Variable scaling depends upon your goals - in driver analysis we are primarily concerned with the relative contribution of different predictors, and standardization assists in this comparison.
+
+```{r}
+# Let's see how scale() works on dummy data
+(dummy <- 1:5)
+
+# Scaled data has mean = 0
+(scaled_dummy <- scale(dummy))
+
+#Let's scale the numeric features 
+sat_scaled <- sat_df[ , -3] #everything except distance since we now have logdist 
+sat_scaled[ , 3:8] <- scale(sat_scaled[ , 3:8]) #only scale numerics
+head(sat_scaled)
 
 ```
 
-sometimes we may want to normalize coefficients for comparison of relative contributions in predicting outcome variable
+Now that we have completed our initial investigation, it is useful to see if we can increase model performance. Let's see whether we can improve model fit by adding variables accounting for number of children, whether customer uses coupons or promos, and distance from primary store. As illustrated in the summary below, we see that model `m3` performs slightly better than `m2` explaining an additional 3% of the unaccounted for variation. We also note the addition of two additional significant predictors: a small negative effect of *logdist* and a positive effect for *num_child*. There is no main effect of promo (`lm()` automatically dummifies factor variables - basically each factor level becomes its own binary numeric variable).
 
 ```{r}
-sat.std <- sat.df[,-3]
-sat.std[,3:8] <- scale(sat.std[,3:8])  
-  
-head(sat.df)
-head(sat.std)
-
-#standardized variables should have mean = 0
-summary(sat.std)
-
-```
-
-
-```{r}
-m3 <- lm(overall ∼ rides + games + wait + clean +weekend + logdist + num.child, data = sat.std)
+m3 <- lm(overall ∼ clean + aroma + value + color + logdist + num_child + promo, data = sat_scaled)
 summary(m3)
-
-sat.std$has.child <- factor(sat.std$num.child > 0)
-
-m6 <- lm(overall ∼ rides + games + wait + clean + weekend + logdist + has.child + rides:has.child + games:has.child + wait:has.child + clean:has.child + rides:weekend + games:weekend + wait:weekend + clean:weekend, data=sat.std)
-
-
 ```
 
-Using a Bayesian linear model
+We need to be concerned with how *num_children* is treated in the model. Specifically, the GLM assumes that overall satisfaction goes up or down linearly as a function of each variable - in the case of the number of children, we might expect a non-linear relationship. Below we convert *num_child* to a factor and add it as a new variable *num_child_factor*. In the resulting model fit `m4` compared to `m3`, we see a slightly higher R-squared (0.7488) - indicating better performance. We also see that `num_child_factor` has been dummified into it's constituent binary variables, three of which are signifiant predictors of overall satisfaction.
+
 ```{r}
-m7.bayes <- MCMCregress(overall ∼ rides + games + wait + clean + logdist + has.child + wait:has.child, data=sat.std)
-
-summary(m7.bayes)
-
+sat_scaled$num_child_factor <- factor(sat_scaled$num_child)
+m4 <- lm(overall ∼ clean + aroma + value + color + logdist + num_child_factor + promo, data = sat_scaled)
+summary(m4)
 ```
 
-Second, the Bayesian output does not include statistical tests or p-values; null
-hypothesis tests are not emphasized in the Bayesian paradigm. Instead, to determine
-whether a parameter is likely to be non-zero (or to compare it to any
-other value), check the 2.5 and 97.5 %’iles and directly interpret the credible interval.
-For instance, in the quantiles above, the 2.5–97.5 %’iles for logdist range
-(−0.01092,0.06869) and we conclude that the coefficient for logdist is not credibly
-different from 0 at a level of 95% confidence. However, all of the other coefficients
-are different from zero.
+Since *num_child_factor3*, *num_child_factor4*, and *num_child_factor5* all share very similar coefficients, it might be useful to collpase these three features into a single factor. Doing this binning operation can increase model performance by reducing dimensionality and thus increasing the signal-to-noise ratio. Below, we collapse these three variables into a single logical feature *more_than_2child* and then refit a new model, `m5`.
+
+```{r}
+# Create a binary variable indicating if they have more than 2 kids
+sat_scaled$more_than_2child <- sat_scaled$num_child > 2
+m5 <- lm(overall ∼ clean + aroma + value + color + logdist + more_than_2child + promo, data = sat_scaled)
+summary(m5)
+```
+
+The resultant r-squared is similar to model `m5`, but calling `anova()` shows no significant differences between the models. At this juncture, although `m5` does not improve upon `m4`, we are likely to choose `m5` because it is the simpler, most parsimonious model.
+
+```{r}
+# No significant differences b/w models
+anova(m4, m5)
+```
+
+In the previous scenarios we examined the effects of adding additional primary terms to the linear model. In the current scenario, we investigate adding interaction terms - these are terms that capture the interaction of variables (e.g., perhaps number of children interacts with distance travelled?). We add interaction terms to the formula using `a:b` syntax indicating an interaction between `a` and `b`. Below we add an interaction term for each combination of *more_than_2child* with the primary terms.
+
+```{r}
+m6 <- lm(overall ∼ clean + aroma + value + color + logdist + more_than_2child + promo + more_than_2child:clean + more_than_2child:aroma + more_than_2child:value + more_than_2child:color + more_than_2child:logdist + more_than_2child:aroma, data = sat_scaled)
+summary(m6)
+```
+In the case of model `m6` we only observe a single significant interaction term *logdist:more_than_2childTRUE* with a value of -0.11. This coefficient indicates that customers with more than two children are influenced by distance - as `logdist` increases for these individuals with children they progressive decrease their overall satisfaction ratings. In finalizing the model, we just redefine our formula, only keeping the terms that are significant.
+
+```{r}
+# Explicitly create the more_than_2child column
+sat_scaled$more_than_2child <- as.integer(sat_scaled$more_than_2child)
+m7 <- lm(overall ∼ clean + aroma + value + color + more_than_2child + more_than_2child:logdist, data = sat_scaled)
+summary(m7)
+```
+**Basic Formula Notation**
+
+Formula Notation | Linear Model | Description
+---------------- | ------------ | -----------
+`y ~ x` | $y_{i}$ = $\beta_{0}$ + $\beta_{1}$$x_{i}$ + $\epsilon_{i}$ | `y` is a linear function of `x`
+`y ~ x - 1` | $y_{i}$ = $\beta_{1}$$x_{i}$ + $\beta_{2}$$z_{i}$ + $\epsilon_{i}$ | Omit the intercept
+`y ~ x + z` | $y_{i}$ = $\beta_{0}$ + $\beta_{1}$$x_{i}$ + $\beta_{2}$$z_{i}$ + $\epsilon_{i}$ | `y` is a linear combination of `x` and `z`
+`y ~ x:z` | $y_{i}$ = $\beta_{0}$ + $\beta_{1}$$x_{i}$$z_{i}$ + $\epsilon_{i}$ | `y` is an interaction of `x` and `z`
+`y ~ x*z` | $y_{i}$ = $\beta_{0}$ + $\beta_{1}$$x_{i}$ + $\beta_{2}$$z_{i}$ + $\beta_{3}$$x_{i}$$z_{i}$ + $\epsilon_{i}$ | Include `x` & `z` and an interaction of `x` & `z`
+
+
+**Procedure for Fitting Linear Model**
+
+1. Inspect the data to make sure it is clean and has the structure you expect.
+2. Check the distributions of the variables to make sure they are not highly skewed. If one is skewed, consider transforming it.
+3. Examine the bivariate scatterplots and correlation matrix to see whether there are any extremely correlated variables (such as r > 0.9, or several with r > 0.8). If so, omit some variables or consider transforming them if needed.
+4. If you wish to estimate coefficients on a consistent scale, standardize the data with `scale()`.
+5. After fitting a model, check the residual quantiles in the output. The residuals show how well the model accounts for the individual observations.
+6. Check the standard model plots using `plot()`, which will help you judge whether a linear model is appropriate or whether there is nonlinearity, and will identify potential outliers in the data.
+7. Try several models and compare them for overall interpretability and model fit by inspecting the residuals’ spread and overall R2. If the models are nested, you could also use `anova()` for comparison.
+8. Report the confidence intervals of the estimates with your interpretation and recommendations.
+
+**Bayesian Linear Models**
+Bayesian inference estimates the most likely coefficients of a linear model by sampling the posterior distribution of estimated model parameters, using a procedure known as Markov-chain Monte Carlo (MCMC). To do this, we can call `MCMCregress()` which estimates Bayesian linear models by sampling from the posterior distribution;
+
+```{r}
+library(MCMCpack)
+m7_bayes <- MCMCregress(overall ∼ clean + aroma + value + color + more_than_2child + more_than_2child:logdist, data = sat_scaled)
+summary(m7_bayes)
+```
+
+Examining the output of `summary()` we see that `MCMCregress()` has drawn 10,000 samples from the estimated posterior distribution of coefficients. The 10,000 sets of estimates are described by: (1) using central tendency statistics and (2) distribution quantiles. We can compare the `m7_bayes` model with the `m7` model fit with `lm()`. First off, we notice that almost all of the coefficients are nearly identical. There are two noticable differences in the output: First, `MCMregress` includes quantile information because the Bayesian posterior distribution may be asymmetric (i.e. the distribution of estimates could be skewed if that provided a better fit to the data).
+Second, the Bayesian output does not include statistical tests or p-values; null hypothesis tests are not emphasized in the Bayesian paradigm. Instead, to determine whether a parameter is likely to be non-zero (or to compare it to any other value), check the 2.5 and 97.5 %’iles and directly interpret the credible interval.
+
+**Key Points**
+
+ 1. Linear models relate a numeric outcome variable to independent predictors by finding
+a line that best fits the the data. Function `lm()` returns a model fit object can be used with
+generic functions like `plot()` and `summary()`.
+ 1. Check data quality and the distribution of all variables. Normal distributions
+are preferred, and data such as counts and revenue often need
+to be transformed. Also check that variables do not have excessive correlation.
+ 1. For ease of interpretation, it is often useful to standardize variable on a common scale so that coefficients are comparable. A common standardization is `scale()`.
+ 1. Linear models assume the relationship between predictors and the outcome variable are linear and that fit errors are symmetric (homoskedastic). Function `plot()` creates charts to help determine if assumptions are violated.
+ 1. Function `summary()` typically reports model coefficients, standard errors, and p-values for hypothesis tests.
+ 1. Factor variables may be included in a model simply by adding the name of the
+factor to the model formula. R automatically dummifies factors into binary numeric predictor variables. 
+ 1. An interaction is the product of two other predictors, and thus assesses the degree to which the predictors reinforce (or cancel) one another. You can model an interaction between x and y by including x:y in a model formula.
