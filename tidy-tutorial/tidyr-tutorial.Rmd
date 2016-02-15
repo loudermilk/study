@@ -1,0 +1,281 @@
+
+
+# Tidy Tutorial
+
+ > "Tidy datasets are all alike but every messy dataset is messy in its own way." – Hadley Wickham
+
+## Introduction
+
+Statistical data sets consist of tabular data organized by rows and columns, like the tables of a traditional database. The data set below stores information about students and their scores on 3 tests.
+
+```{r}
+(df1 <- data.frame(student = c("Jim Smith", "Fred Johnson", "Steve Jones"),
+                  test1 = c(85, 81, 92),
+                  test2 = c(87, 84, 95),
+                  test3 = c(87, 85, 91)))
+```
+
+Importantly, however, there exist multiple ways of storing the *same* underlying data. Below, we display the same data in a different form -- columns and rows are transposed, such that each column represents a student and each row a test.
+
+```{r}
+(df2 <- data.frame("Jim Smith" = c(85, 87, 87), "Fred Johnson" = c(81,84,85), "Steve Jones" = c(87, 85, 91), row.names = c("book1", "book2", "book3")))
+```
+
+In general, a data set is just a collection of values (quantitative/qualitative) where each value belongs to both a variable and an observation. To better illustrate the relationship among values, variables, and observations, we display the same data in third table.
+
+```{r}
+(df3 <- data.frame(student = c("Jim Smith", "Jim Smith", "Jim Smith", "Fred Johnson", "Fred Johnson", "Fred Johnson", "Steve Jones", "Steve Jones", "Steve Jones"),
+                   test_number = c(1,2,3,1,2,3,1,2,3),
+                   score = c(85, 87, 87, 81, 84, 85, 92, 95, 91)))
+
+```
+
+The underlying data behind all three of these surface forms consists of 27 values representing 3 variables and 9 observations. The variables are:
+**student** with three possible values (Jim, Fred, Steve)
+**test_number** with three possible values (1, 2, 3)
+**score** with nine values (85, 87, 87, 81, 84, 85, 92, 95, 91)
+
+The transformed data above is an example of **tidy data** because it adheres to the following conventions:
+
+ 1. Each variable forms a column.
+ 1. Each observation forms a row.
+ 1. Each type of observational unit forms a table.
+
+Any data set that violates these conventions is an "untidy" data set. Untidy data sets come in several different flavors (Wickham):
+
+ 1. Column headers are values, not variable names.
+ 1. Multiple variables are stored in one column.
+ 1. Variables are stored in both rows and columns.
+ 1. Multiple types of observational units are stored in the same table.
+ 1. A single observational unit is stored in multiple tables.
+
+In the following sections we illustrate how to use functions in the {tidyr} and {dplyr} packages to transform untidy data into tidy data.
+
+## Common Transformations
+
+### Gather
+
+**Problem:** Column headers are values, not variable names
+**Solution:** Gathering (`gather()`) makes a wide dataset long by gathering together columns and replacing them with two new columns. Specifically, when you have columns whose headers are values rather than variable names, you can use `gather()` to replace the offending columns with: a *key* column that holds the headers of the original column
+names, and a *value* column for the corresponding data value. 
+
+Let's illustrate `gather()` by examing some data on religion and salary.
+
+```{r}
+library(tidyr) # always load both tidyr & dplyr
+library(dplyr) # they are meany to work together
+
+file_name <- "pew.csv"
+pew <- tbl_df(read.csv(file_name, stringsAsFactors = FALSE, check.names = FALSE))
+
+head(pew)
+```
+
+The data above shows the distribution of individuals by religion and income bracket. Note that columns 2:11 contain headers that are values (e.g., $10k-20k), not variable names (e.g., income). We need to transform these multiple columns into two columns that map keys to values. Function `gather()` accepts four arguments: *data* for the underlying `data.frame`; *key* - name of new column whose values are the headers in the originnal data; *value* - name of the new column that contains the values; and *...* - the triple dots arguments selects the target columns to transform.
+
+```{r}
+## dplyr::gather()
+## data - data.frame or tbl_df
+## key - name of new key column
+## value - name of the new value column
+## ... - columns to include in transformation (these cols are removed)
+
+gather(data = pew, key = salary, value = count, ... = 2:11)
+
+```
+
+Above, we replaced 10 columns with two new columns: `$salary`, which stores income bracket, and `$count`, a tally of frequency. This new data form is tidy because each column represents a variable and each row represents an observation, in this case a demographic unit corresponding to a combination of religion and income.
+
+### Separate
+
+**Problem:** Multiple variables stored in one column
+**Solution:** Separate (`separate()`) the single variable column into multiple columns.
+
+```{r}
+(df1 <- data.frame(year = c(2001, 2001, 2001, 2001), sex_groupnum = c("m1", "m2", "f1", "f2"), score = c(75, 85, 77, 94)))
+```
+
+The above data contains a column `$sex_groupnum` that represents a combination of gender and group number. We would like to separate this column into two variables, `$sex` and `$groupnum`. Function `separate()` takes the following arguments: *data* - the data.frame, *col* - the column to split, *into* - vector of column names that should be created, and *sep* - how to separate the values in the target column.
+
+```{r}
+## data - data.frame
+## col - column to be separated
+## into - vector of new column names
+## sep - separator (regex for character match, or int for position match)
+separate(data = df1, col = sex_groupnum, into = c("sex", "groupnum"), sep = 1)
+```
+
+Above we separated column `$sex_groupnum` using a positional separator (sep = 1), which splits values based on character position. The *sep* variable can also accept a regex value for more sophisticated splitting options.
+
+```{r}
+(df2 <- data.frame(year = c(2001, 2001, 2001, 2001), sex_groupnum = c("male_1", "male_2", "female_1", "female_2"), score = c(75, 85, 77, 94)))
+separate(data = df2, col = sex_groupnum, into = c("sex", "groupnum"), sep = "_")
+```
+
+### Unite
+
+**Problem:** Multiple columns contain values that should be a single column.
+**Solution:** Call `unit()` (inverse of separate) to combine columns into a single column.
+
+```{r}
+(df1 <- data.frame(author = c("Chomsky", "Pinker", "Humboldt"), title = c("Syntactic Stuctures","The Sense of Style", "The Heterogeneity of Languaga"), century = c(19,20, 18) , year = c(57, 15, 36)))
+```
+In the data above, we see that the book's publication year has been split into two columns, one for century and another for year. We need to combine them into a single column called *$publication_year* by calling `unite()`. 
+
+```{r}
+unite(data = df1, col = pubyr, ... = c(century, year), sep = "")
+```
+
+### Chain Operator
+
+Often your starting data will require several transformations to get it into tidy data form. The following data has two untidy issues: column headers contain values and multiple values are stored in single columns.
+
+```{r}
+file_name <- "tb.csv"
+tb1 <- read.csv(file_name)
+head(tb1)
+```
+
+Let's start by gathering the columns with value headers and replacing them with columns `$gender_age` and `$value`.
+
+```{r}
+tb2 <- gather(tb1, gender_age, value, 3:22)
+head(tb2)
+```
+Now, we see that the column `$gender_age` needs to be separated into two independent columns `$gender` and `$age`.
+
+```{r}
+tb3 <- separate(tb2, col = gender_age, into = c("gender", "age"), sep = 1)
+car::some(tb3)
+```
+
+In the above example, we performed a number of individual transformations, `gather()` and `separate()`, storing the results in temporary variables before passing them to the next function. 
+
+Packages {dply} and {tidyr} provide a convenience operator `%>%` that allows use to chain together numerous transformations into a single line of code. This has the added benefit of reducing computation (no need to store data in a temporary variable).
+
+```{r, results="hide"}
+tb1 %>% gather(key = gender_age, value = value, ... = 3:22, na.rm = TRUE) %>% separate(col = gender_age, into = c("gender", "age"), sep = 1)
+
+```
+
+If you inspect the code above you will notice that the syntax differs from our previous examples. Here, rather than explicitly assigning the *data* variable a value (via `gather(data = tb1)`), we use the `%>%` operator to redirect the data variable to the gather function (via `tb1 %>% gather()`). The `%>%` operator is used extensively in {dplyr} and {tidyr} packages and provides a more precise syntax that allows you to chain together functions with the `%>%` operator. Basically `%>%` informs the right hand function to assign the left hand object to the first formal variable of the function. Because all functions in {tidyr} & {dplyr} take *data* as the first formal variable and all of these functions return *data* as output, this enables developers to chain together their logic by using `%>%`.
+
+### Spread
+
+**Problem:** Variables are stored in both rows and columns
+**Solution:** Spread (`spread()`)column row values into columns. Function `spread()` is the inverse of `gather()`.
+
+```{r}
+(df1 <- data.frame(user_id = c(1,1,2,2), type = c("max", "min", "max", "min"), value = c(99,67,88,57)))
+```
+
+The data above stores a unique `user_id` associated with two scores, `min` and `max`. We want to spread these row values into their own column variables.
+
+```{r}
+spread(data = df1, key = type, value = value)
+```
+
+
+### Move data types from single table into multiple tables
+
+**Problem:** Multiple types in one table
+**Solution:** Using an assortment of {dplyr} functions, store each type of observational unit in its own table. In the following example, we examine a single table that stores data on the top 100 Billboard songs by year. Each row consists of song information (year, artist, track, and play time) coupled to Billboard ranking data (week on charts, rank on charts, date of first listing on charts). One of the trademarks of data that contains multiple types in one table, is that you find values repeated across rows. In the case of the billboard data, we see that song information gets duplicated for every week the song is on the charts.
+
+```{r}
+file_name <- "bb.csv"
+df1 <- read.csv(file_name)
+head(df1)
+df1[df1$track == "Baby Don't Cry (Keep...",]
+```
+What we would like to do with this data is to split it into two separate data sets, one that holds song information (songs) and one that holds ranking information (rank).
+
+```{r}
+# select() and mutate() are {dplyr} functions
+# select columns relating to songs
+
+songs <- df1 %>% select(artist, track, year, time) %>% unique() %>% dplyr::mutate( song_id = row_number())
+
+head(songs)
+```
+
+Above, we selected columns relating to song information, added a unique index `$song_id`, and created a `songs` data.frame from the results. Now, we want to extract out the ranking information into its own table and link it back to `songs` via the shared column `$song_id`. 
+
+```{r}
+rank <- df1 %>% left_join(y = songs, c("artist", "track", "year", "time"))%>%
+  select(song_id, date, week, rank) %>%
+  arrange(song_id, date)
+head(rank)
+```
+
+Using a variety of {dplyr} function calls we transformed a single table into two tables each representing their own observational unit. Below, we execute a SQL query on thes new tables.
+
+```{r}
+library(sqldf)
+join_string <- "select songs.artist, songs.track, rank.week, rank.rank
+                from songs
+                left join rank
+                on songs.song_id = rank.song_id"
+res <- sqldf(join_string)
+head(res)
+```
+
+### Move data type in multiple tables into single table
+
+**Problem:** One type in multiple tables
+**Solution:** Combine the multiple tables into a single table.
+Here is the typical sequence to resolv this issue:
+
+ 1. Read the files into a list of tables.
+ 1. For each table, add a new column that records the original file name (the file name is often the value of an important variable).
+ 1. Combine all tables into a single table.
+
+```{r}
+
+dir("data/")
+
+temp_df <- read.csv("data/station_1.txt")
+head(temp_df)
+
+library(plyr)
+paths <- dir("data/", pattern = "\\.txt$", full.names = TRUE)
+names(paths) <- basename(paths)
+df <- ldply(paths, read.csv, stringsAsFactors = FALSE)
+head(df)
+```
+
+## Putting it all together
+
+In the following use case, you will apply all you have learned about {tidyr} and {dplr} to create a tidy data set. The World Health Organization provided data on tuberculosis rates across the world. 
+
+```{r}
+df <- read.csv("who.csv")
+names(df)
+```
+
+Here is the structure and conventions for the data set:
+
+For columns 5-60:
+
+1. The prefix "new_" refers to new cases of tuberculosis. 
+
+2. The next two letters define the type of tuberculosis:
+
+2-ltr code | Description
+---------- | -----------
+rel        | relapse
+ep         | extrapulmonary
+sn         | smear negative
+sp         | smear positive
+
+3. The sixth letter describes patient sex: m = male, f = female
+4. Remaining numbers describe the age group:
+ 
+code | group
+---- | -----
+014  | 0 to 14
+1524 | 15 to 24
+2534 | 25 to 34
+3544 | 35 to 44
+4554 | 45 to 54
+5564 | 55 to 64
+65   | 65+ years
