@@ -1,0 +1,64 @@
+---
+title: "eda-checklist"
+author: "Brandon C. Loudermilk"
+date: "December 18, 2015"
+output: html_document
+---
+
+1. **Import your data** with `read.csv()` or another appropriate function and check that the importation process gives no errors.
+
+2. **Convert to data.frame or data.table** if needed `(my.data <- data.frame(DATA)` and set column names `(names(my.data) <- c(...))` if needed.
+
+3. **Examine dimensions** - use `dim()` to check that the data frame has the expected number of rows and columns.
+
+4. **Examine head/tail of data** - Use `head()` and `tail(my.data)` to check the first few and last few rows;
+make sure that header rows at the beginning and blank rows at the end were
+not included accidentally. Also check that no good rows were skipped at the beginning.
+
+5. **Spotcheck data** - Use `some()` from the **car** package to examine a few sets of random rows.
+
+
+6. **Check the data.frame structure** - Use `str()` to ensure that variable types and values are appropriate. Change the type of variables as necessary.
+
+7. **Get summary stats** - Run `summary()` and look for unexpected values, especially min and max that are unexpected.
+
+8. **Get detailed summary** - Load the **psych** library and examine basic descriptives with `describe()`. Reconfirm the observation counts by checking that n is the same for each variable, and check trimmed mean and skew (if relevant). **NEED MORE DESCRIPTION HERE**
+
+9. **Test for normality** - Use `qqnorm()` and `qqline()` to test normality assumptions. 
+
+10 . **Specific transformations** - as needed for statistical assumptions (e.g., `log()`)
+
+Variable | Common Transform
+-------- | ----------------
+sales, revenue, income, price | `log(x)`
+distance | `1/x`, `1/x^2`, `log(x)`
+market share, preference share | `(e^x)/(1+e^x)`
+right-tailed dist | `sqrt(x)`, `log(x)` caution log(x<=0)
+left-tailed dist | `x^2`
+
+11. **General transformation** - when specific transformations don't work, use Box-Cox transformation. Use package **car** to `lambda <- coef(powerTransform())` to compute lambda and then call `bcPower()` to transform. Consider Box???Cox transformations on all variables with
+skewed distributions before computing correlations or creating scatterplots.
+
+12. **Examine correlation** - Use `pairs()` to show scatterplots of all variables. Function `scatterplotMatrix()` in package **car** is pairs-on-steroids. Another possibility is `gpairs()` in package **gpairs** which provides better visualization for factors.
+
+13. **More correlation** - For continuous variables use `cor()` to compute Pearson's correlation coefficient. *Cohen's Rules of Thumb:* r=0.1 *small/weak*; r=0.3 *medium*; r>=0.5 *large/strong* (assuming normal distribution; transform if needed). Use `cor.test()` to compute p-value.
+
+14. **Multivariable correlation** - For multiple variable correlation compute a correlation matrix by calling `cor()` with multiple variables. Packages **corrplot** and **gplots** provide `corplott()` and `corrplot.mixed()` to plot graphical vizualiations of correlation.
+
+15. We recommend to report—and when appropriate, to chart—
+confidence intervals whenever feasible rather than reporting single point estimates.
+By reporting CIs, one presents a more complete and accurate description to stakeholders.
+
+16. Use anova for nested model comparison. If two models are nested (e.g., `m1 = y ~ a + b` and `m2 = y ~ a`) you can determine if there are significant differences in fit between two different models -  `anova(m1,m2)`
+
+17. Visualize group confidence intervals. Use **multcomp** package's function `glht()` as input to `plot()` will plot the means and 95% CI for all segments.
+
+18. use `step()` to automatically iterate through model permutations and testing them to identify the best model.
+
+19. Basics of Bayesian ANOVA - install.packages("BayesFactor"). Use the `lmBF(formula, data)` command to specify the ANOVA models. Bayes factor analysis via `seg.bf1 / seg.bf2`
+
+
+
+
+
+
