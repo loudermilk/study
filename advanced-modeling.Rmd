@@ -5,41 +5,77 @@ date: "January 6, 2016"
 output: html_document
 ---
 
-PCA (Principle Components Analysis) attempts to find uncorrelated linear dimensions that capture maximal variance in the data
+**Dimensionality Reduction Techniques**
 
-Distribution | Function | Example
------------- | -------- | -------
-Normal | rnorm | y <- rnorm(length(x),mean=a+b*x,sd=s)
-Binomial | rbinom | y <- rbinom(length(x),prob=logit(a+b*x),size=n)
-Poisson | rpois | y <- rpois(length(x),lambda=a+b*x)
-Gamma | rgamma | y <- rgamma(length(x),shape=a+b*x,scale=th)
-Negative | binomial | rnbinom y <- rnbinom(length(x),mu=a+b*x,size=n)
- | rgamma/rpois | y1 <- rgamma(length(x),shape=a+b*x,scale=th)
-y2 <- rpois(length(y1),lambda=y1)
-Exponential | rexp | y <- rexp(length(x),rate=a+b*x)
-Beta-binomial | rbeta/rbinom | y1 <- rbeta(length(x),shape1=a+b*x,shape2=s2)
-y2 <- rbinom(length(y1),prob=y1,size=n)
+**Curse of Dimensionality** As dimensionality increases, the volume of the space increases exponentially making data sparse. Sparsity is problematic because determining statistical significance requires sufficient data. In addition, as features are added to a model, the likelihood of variable correlation increases possibly violating statistical assumptions and decreasing signal-to-noise ratio.
+
+This document discusses several techniques for dealing with the curse of dimensionality: **Principle Components Analysis** - *PCA identifies uncorrelated linear dimensions that capture maximal variance in the dependent variable*; **Exploratory Factor Analysis** - *EFA captures variance with a small number of dimensions while seeking to make the dimensions interpretable in terms of the original variables*; and **Multidimensional Scaling** - *MDS, which can operate of categorical and ordinal data maps similarities among observations in terms of a lower-dimenesional space*.
+
+**Scenario**
+In marketing, dimensionality reduction techniques are often associated with *perceptual maps* that visualize customers’ associations among brands. XYZ Marketing Company, in support of one of its clients, has conducted a consumer brand perception survey. 100 randomly sampled participants completed a survey in which they rated 10 laundry detergent brands on 10 perceptual adjectives. Participants were given survey items like the following:
+
+*On a scale of 1 (worst) to 10 (best), rate BRAND-X (Tide Pods)on ATTRIBUTE-Y (Grass Stain Removal).*
+
+Let's start by simulating some brand perception data.
+
+```{r}
+set.seed(459)
+
+num_respondents <- 100
+
+brands <- c("Tide Pods", "Gain", "OxiClean", "All", "Cheer", "Arm & Hammer", "Wisk", "Kirkland", "Purex", "Persil")
+
+num_brands <- length(brands)
+
+attr_1 <- c("Dirt", "Grass", "Blood", "Wine")
+attr_2 <- c("Aroma", "White", "Color", "Value", "Warm", "Cold")
+attr_names <- c(attr_1, attr_2)
+
+
+df0 <- data.frame(Respondent = unlist(lapply(1:num_respondents, function(x){rep(x,num_brands)})))
+
+
+```
+
+
 
 
 ```{r}
 
 brand.ratings <- read.csv("http://goo.gl/IQl8nc")
 head(brand.ratings)
-summary(brand.ratings)
+tail(brand.ratings)
 
+summary(brand.ratings)
+str(brand.ratings)
+```
+
+### Rescale raw data
+Rescaling (aka standardizing, normalizing) makes data comparable across individuals and samples. Typically, variables are centered by subtracting the mean from every observation and then rescale those centered values as units of standard deviation. 
+```{r}
 brand.sc <- brand.ratings
 brand.sc[, 1:9] <- scale(brand.ratings[, 1:9])
 summary(brand.sc)
+```
 
+## Inspect bivariate relationships among variables
+
+```{r}
 library(corrplot)
 corrplot(cor(brand.sc[, 1:9]), order="hclust")
+```
 
+Compute mean score for each variable grouped by brand
+
+```{r}
 brand.mean <- aggregate(. ∼ brand, data=brand.sc, mean)
-brand.mean
-
 rownames(brand.mean) <- brand.mean[, 1] # use brand for the row names
 brand.mean <- brand.mean[, -1] # remove brand name column
+```
 
+Create a heat map
+
+```{r}
 library(gplots)
 library(RColorBrewer)
 heatmap.2(as.matrix(brand.mean), col=brewer.pal(9, "GnBu"), trace="none", key=FALSE, dend="none",main="\n\n\n\n\nBrand attributes")
@@ -47,39 +83,91 @@ heatmap.2(as.matrix(brand.mean), col=brewer.pal(9, "GnBu"), trace="none", key=FA
 
 ```
 
-PCA recomputes a set of variables in terms of linear equations, known as components,
-that capture linear relationships in the data [87]. The first component captures
-as much of the variance as possible from all variables as a single linear function. The
-second component captures as much variance as possible that remains after the first
-component. This continues until there are as many components as there are variables.
-We can use this process to reduce data complexity by retaining and analyzing
-only a subset of those components—such as the first one or two components—that
-explain a large proportion of the variation in the data.
+PCA recomputes a set of variables in terms of linear equations, known as components, that capture linear relationships in the data. The first component captures as much of the variance as possible from all variables as a single linear function. The second component captures as much variance as possible that remains after the first component. This continues until there are as many components as there are variables. We can use this process to reduce data complexity by retaining and analyzing only a subset of those components—such as the first one or two components — that explain a large proportion of the variation in the data.
 
 ```{r}
+
 set.seed(98286)
 xvar <- sample(1:10, 100, replace=TRUE)
+
+# y is correlated w/ x
 yvar <- xvar
 yvar[sample(1:length(yvar), 50)] <- sample(1:10, 50, replace=TRUE)
+
+# z is correlated w/ y
+# z is very slightly correlated w/ x
 zvar <- yvar
 zvar[sample(1:length(zvar), 50)] <- sample(1:10, 50, replace=TRUE)
 my.vars <- cbind(xvar, yvar, zvar)
+```
+Now let's ensure that there is the expected correlation
 
+```{r}
+# we see expected correlations
 plot(yvar ∼ xvar, data=jitter(my.vars))
-cor(my.vars)
+plot(yvar ∼ zvar, data=jitter(my.vars))
 
+# we see the expected slight correlation
+plot(xvar ~ zvar, data =jitter(my.vars))
+
+cor(my.vars)
+```
+
+Now that we have created some dummy data, let's perform a PCA on it. 
+
+```{r}
 library(nsprcomp)
 my.pca <- prcomp(my.vars)
 summary(my.pca)
-
-
-cor(my.pca$x)
-
-biplot(my.pca)
-
-
 ```
 
+As observed above, we note that if a data.frame has n variables, then PCA will extract n components. We see that the first component PC1 captures 65% of the variance, followed by PC2 with 24% and PC3 with 11%. To determine how the components are related to the variables we need to inspect the rotation matrix.
+
+```{r}
+# display the rotation matrix
+my.pca
+```
+
+For PC1 we see loading on all three variables (sign is not important, only that they share the same direction). In component PC2 we see that xvar and zvar are differentiated by loadings in opposite directions. PC3 captures residual variance that differentiates yvar from the other variables. 
+
+PCA also computed scores for each of the principal components that express the underlying data in terms of its loadings on those components. We can use a these columns in place of the original data to obtain a set of observations that captures much of the variation in the data. Importantly, the components that are extracted via PCA are uncorrelated with one another.
+```{r}
+cor(my.pca$x)
+```
+
+
+A common visualization is a biplot, a two-dimensional plot of data points with respect to the first two PCA components, overlaid with a projection of the variables on the components. Every data point is plotted and labelled by its row number.
+
+The arrows on the plot show the best fit of each of the variables on the principal components. These are useful to inspect because the direction and angle of the arrows reflect the relationship of the variables; a closer angle indicates higher positive association, while the relative direction indicates positive or negative association of the variables.
+```{r}
+biplot(my.pca)
+```
+In the plot above, we note that yvar is most closely alligned with PC1 (i.e. `yvar` is near parallel to x axis). Variables `xvar` and `zvar` are more closely alligned with `yvar` than they are with one another.
+
+Now that we have described the basics of principle components analyis, let's compute a PCA on the brand data. 
+
+```{r}
+brand.pc <- prcomp(brand.sc[, 1:9])
+summary(brand.pc)
+
+# scree plot
+plot(brand.pc, type="l")
+```
+
+A scree plot indicates where additional components are not worth the complexity; this occurs where the line has an elbow, a kink in the angle of bending, a somewhat subjective determination. In our data, we see that the first three or four components capture the majority of the variance.
+
+
+```{r}
+biplot(brand.pc)
+```
+
+The biplot illustrates how the variables with one another and the 2-dimensional space of the first two principle components. However, individual ratings is too dense and it does not tell us about the brand positions. Let's work with data aggregated by brand.
+
+```{r}
+brand.mean
+brand.mean.sc <- scale(brand.mean)
+
+```
 
 ```{r}
 library(nFactors)

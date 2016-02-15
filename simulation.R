@@ -2,6 +2,8 @@
 # Utilities for simulating data
 
 
+?sim.correlation
+
 #' @title Simulate Correlated Data
 #' 
 #' @description Create data.frame of simulated data
@@ -28,8 +30,8 @@ simCorrelatedData <- function(num_var, num_obs, col_names = NULL) {
     col_names <- c(col_names, DEF_DV_NAME)
   }
   
-  # Create matrix with positive values
-  random_matrix <- Matrix::Matrix(rnorm(num_var^2, mean = .5, sd = .1), 
+  # Create matrix
+  random_matrix <- Matrix::Matrix(rnorm(num_var^2, mean = 0, sd = .2), 
                           num_var)
   
   # Set diagonal to identity and make symmetric
@@ -40,7 +42,8 @@ simCorrelatedData <- function(num_var, num_obs, col_names = NULL) {
 
   # Decompose via Cholesky
   cholesky_matrix <- Matrix::chol(correlation_matrix)
-  out_matrix <- t(cholesky_matrix) %*% matrix(rnorm(num_var*num_obs), 
+  c_matrix <- as.matrix(cholesky_matrix)
+  out_matrix <- t(c_matrix) %*% matrix(rnorm(num_var*num_obs), 
                                 nrow=num_var, ncol=num_obs)
   out_matrix <- t(out_matrix)
   out_matrix <- as.matrix(out_matrix)
