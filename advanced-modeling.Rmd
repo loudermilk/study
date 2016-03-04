@@ -1,0 +1,425 @@
+---
+title: "advanced-marketing-applications"
+author: "Brandon C. Loudermilk"
+date: "January 6, 2016"
+output: html_document
+---
+
+**Dimensionality Reduction Techniques**
+
+**Curse of Dimensionality** As dimensionality increases, the volume of the space increases exponentially making data sparse. Sparsity is problematic because determining statistical significance requires sufficient data. In addition, as features are added to a model, the likelihood of variable correlation increases possibly violating statistical assumptions and decreasing signal-to-noise ratio.
+
+This document discusses several techniques for dealing with the curse of dimensionality: **Principle Components Analysis** - *PCA identifies uncorrelated linear dimensions that capture maximal variance in the dependent variable*; **Exploratory Factor Analysis** - *EFA captures variance with a small number of dimensions while seeking to make the dimensions interpretable in terms of the original variables*; and **Multidimensional Scaling** - *MDS, which can operate of categorical and ordinal data maps similarities among observations in terms of a lower-dimenesional space*.
+
+**Scenario**
+In marketing, dimensionality reduction techniques are often associated with *perceptual maps* that visualize customers’ associations among brands. XYZ Marketing Company, in support of one of its clients, has conducted a consumer brand perception survey. 100 randomly sampled participants completed a survey in which they rated 10 laundry detergent brands on 10 perceptual adjectives. Participants were given survey items like the following:
+
+*On a scale of 1 (worst) to 10 (best), rate BRAND-X (Tide Pods)on ATTRIBUTE-Y (Grass Stain Removal).*
+
+Let's start by simulating some brand perception data.
+
+```{r}
+set.seed(459)
+
+num_respondents <- 100
+
+brands <- c("Tide Pods", "Gain", "OxiClean", "All", "Cheer", "Arm & Hammer", "Wisk", "Kirkland", "Purex", "Persil")
+
+num_brands <- length(brands)
+
+attr_1 <- c("Dirt", "Grass", "Blood", "Wine")
+attr_2 <- c("Aroma", "White", "Color", "Value", "Warm", "Cold")
+attr_names <- c(attr_1, attr_2)
+
+
+df0 <- data.frame(Respondent = unlist(lapply(1:num_respondents, function(x){rep(x,num_brands)})))
+
+
+```
+
+
+
+
+```{r}
+
+brand.ratings <- read.csv("http://goo.gl/IQl8nc")
+head(brand.ratings)
+tail(brand.ratings)
+
+summary(brand.ratings)
+str(brand.ratings)
+```
+
+### Rescale raw data
+Rescaling (aka standardizing, normalizing) makes data comparable across individuals and samples. Typically, variables are centered by subtracting the mean from every observation and then rescale those centered values as units of standard deviation. 
+```{r}
+brand.sc <- brand.ratings
+brand.sc[, 1:9] <- scale(brand.ratings[, 1:9])
+summary(brand.sc)
+```
+
+## Inspect bivariate relationships among variables
+
+```{r}
+library(corrplot)
+corrplot(cor(brand.sc[, 1:9]), order="hclust")
+```
+
+Compute mean score for each variable grouped by brand
+
+```{r}
+brand.mean <- aggregate(. ∼ brand, data=brand.sc, mean)
+rownames(brand.mean) <- brand.mean[, 1] # use brand for the row names
+brand.mean <- brand.mean[, -1] # remove brand name column
+```
+
+Create a heat map
+
+```{r}
+library(gplots)
+library(RColorBrewer)
+heatmap.2(as.matrix(brand.mean), col=brewer.pal(9, "GnBu"), trace="none", key=FALSE, dend="none",main="\n\n\n\n\nBrand attributes")
+
+
+```
+
+PCA recomputes a set of variables in terms of linear equations, known as components, that capture linear relationships in the data. The first component captures as much of the variance as possible from all variables as a single linear function. The second component captures as much variance as possible that remains after the first component. This continues until there are as many components as there are variables. We can use this process to reduce data complexity by retaining and analyzing only a subset of those components—such as the first one or two components — that explain a large proportion of the variation in the data.
+
+```{r}
+
+set.seed(98286)
+xvar <- sample(1:10, 100, replace=TRUE)
+
+# y is correlated w/ x
+yvar <- xvar
+yvar[sample(1:length(yvar), 50)] <- sample(1:10, 50, replace=TRUE)
+
+# z is correlated w/ y
+# z is very slightly correlated w/ x
+zvar <- yvar
+zvar[sample(1:length(zvar), 50)] <- sample(1:10, 50, replace=TRUE)
+my.vars <- cbind(xvar, yvar, zvar)
+```
+Now let's ensure that there is the expected correlation
+
+```{r}
+# we see expected correlations
+plot(yvar ∼ xvar, data=jitter(my.vars))
+plot(yvar ∼ zvar, data=jitter(my.vars))
+
+# we see the expected slight correlation
+plot(xvar ~ zvar, data =jitter(my.vars))
+
+cor(my.vars)
+```
+
+Now that we have created some dummy data, let's perform a PCA on it. 
+
+```{r}
+library(nsprcomp)
+my.pca <- prcomp(my.vars)
+summary(my.pca)
+```
+
+As observed above, we note that if a data.frame has n variables, then PCA will extract n components. We see that the first component PC1 captures 65% of the variance, followed by PC2 with 24% and PC3 with 11%. To determine how the components are related to the variables we need to inspect the rotation matrix.
+
+```{r}
+# display the rotation matrix
+my.pca
+```
+
+For PC1 we see loading on all three variables (sign is not important, only that they share the same direction). In component PC2 we see that xvar and zvar are differentiated by loadings in opposite directions. PC3 captures residual variance that differentiates yvar from the other variables. 
+
+PCA also computed scores for each of the principal components that express the underlying data in terms of its loadings on those components. We can use a these columns in place of the original data to obtain a set of observations that captures much of the variation in the data. Importantly, the components that are extracted via PCA are uncorrelated with one another.
+```{r}
+cor(my.pca$x)
+```
+
+
+A common visualization is a biplot, a two-dimensional plot of data points with respect to the first two PCA components, overlaid with a projection of the variables on the components. Every data point is plotted and labelled by its row number.
+
+The arrows on the plot show the best fit of each of the variables on the principal components. These are useful to inspect because the direction and angle of the arrows reflect the relationship of the variables; a closer angle indicates higher positive association, while the relative direction indicates positive or negative association of the variables.
+```{r}
+biplot(my.pca)
+```
+In the plot above, we note that yvar is most closely alligned with PC1 (i.e. `yvar` is near parallel to x axis). Variables `xvar` and `zvar` are more closely alligned with `yvar` than they are with one another.
+
+Now that we have described the basics of principle components analyis, let's compute a PCA on the brand data. 
+
+```{r}
+brand.pc <- prcomp(brand.sc[, 1:9])
+summary(brand.pc)
+
+# scree plot
+plot(brand.pc, type="l")
+```
+
+A scree plot indicates where additional components are not worth the complexity; this occurs where the line has an elbow, a kink in the angle of bending, a somewhat subjective determination. In our data, we see that the first three or four components capture the majority of the variance.
+
+
+```{r}
+biplot(brand.pc)
+```
+
+The biplot illustrates how the variables with one another and the 2-dimensional space of the first two principle components. However, individual ratings is too dense and it does not tell us about the brand positions. Let's work with data aggregated by brand.
+
+```{r}
+brand.mean
+brand.mean.sc <- scale(brand.mean)
+
+```
+
+```{r}
+library(nFactors)
+nScree(brand.sc[, 1:9])
+eigen(cor(brand.sc[, 1:9]))$values
+factanal(brand.sc[, 1:9], factors=2)
+factanal(brand.sc[, 1:9], factors=3)
+
+
+library(GPArotation)
+(brand.fa.ob <- factanal(brand.sc[, 1:9], factors=3, rotation="oblimin"))
+
+library(gplots)
+library(RColorBrewer)
+heatmap.2(brand.fa.ob$loadings, col=brewer.pal(9, "Greens"), trace="none", key=FALSE, dend="none", Colv=FALSE, cexCol = 1.2,main="\n\n\n\n\nFactor loadings for brand adjectives")
+
+
+library(semPlot)
+semPaths(brand.fa.ob, what="est", residuals=FALSE, cut=0.3, posCol=c("white", "darkgreen"), negCol=c("white", "red"), edge.label.cex=0.75, nCharNodes=7)
+
+```
+
+In addition to estimating the factor structure, EFA will also estimate latent factor
+scores for each observation. In the present case, this gives us the best estimates of
+each respondent’s latent ratings for the “value,” “leader,” and “latest” factors.We can
+then use the factor scores to determine brands’ positions on the factors. Interpreting
+factors eliminates the separate dimensions associated with the manifest variables,
+allowing us to concentrate on a smaller, more reliable set of dimensions that map to
+theoretical constructs instead of individual items.
+
+```{r}
+brand.fa.ob <- factanal(brand.sc[, 1:9], factors=3, rotation="oblimin", scores="Bartlett")
+brand.scores <- data.frame(brand.fa.ob$scores) # get the factor scores
+brand.scores$brand <- brand.sc$brand # get the matching brands
+head(brand.scores)
+
+brand.fa.mean <- aggregate(. ∼ brand, data=brand.scores, mean)
+
+rownames(brand.fa.mean) <- brand.fa.mean[, 1] # brand names
+brand.fa.mean <- brand.fa.mean[, -1]
+names(brand.fa.mean) <- c("Leader", "Value", "Latest") # factor names
+brand.fa.mean
+
+heatmap.2(as.matrix(brand.fa.mean), col=brewer.pal(9, "GnBu"), trace="none", key=FALSE, dend="none", cexCol=1.2, main="\n\n\n\n\n\nMean factor score by brand")
+
+```
+
+MDS is a family of procedures that can also be used to find lower-dimensional representations
+of data. Instead of extracting underlying components or latent factors,
+MDS works instead with distances (also known as similarities). MDS attempts to
+find a lower-dimensional map that best preserves all the observed similarities between
+items.
+
+```{r}
+
+# For MDS we need to have the distances
+brand.dist <- dist(brand.mean) #euclidean distance matrix
+(brand.mds <- cmdscale(brand.dist))
+# 
+# The result of cmdscale() is a list of X and Y dimensions indicating twodimensional
+# estimated plot coordinates for entities (in this case, brands). We see
+# the plot locations for brands a and b in the output above.
+
+plot(brand.mds, type="n")
+text(brand.mds, rownames(brand.mds), cex=2)
+
+# changing to rank-ordering to illustrate categorical data
+brand.rank <- data.frame(lapply(brand.mean, function(x) ordered(rank(x))))
+str(brand.rank)
+
+library(cluster)
+(brand.dist.r <- daisy(brand.rank, metric="gower"))
+
+#apply non-metric MDS function
+library(MASS)
+brand.mds.r <- isoMDS(brand.dist.r)
+plot(brand.mds.r$points, type="n")
+text(brand.mds.r$points, levels(brand.sc$brand), cex=2)
+```
+
+An Initial Linear Model of Online Spend
+```{r}
+cust.df <- read.csv("http://goo.gl/PmPkaG")
+summary(cust.df)
+
+#only interested in indivs who spend something
+spend.m1 <- lm(online.spend ∼ ., data=subset(cust.df[ , -1], online.spend > 0))
+# should be concerned: High R^2; expect to see correlation with visit
+summary(spend.ml)
+
+library(gpairs)
+gpairs(cust.df)
+
+autoTransform <- function(x) {
+  library(forecast)
+  return(scale(BoxCox(x, BoxCox.lambda(x))))
+}
+
+cust.df.bc <- cust.df[complete.cases(cust.df), -1]
+cust.df.bc <- subset(cust.df.bc, online.spend > 0)
+numcols <- which(colnames(cust.df.bc) != "email")
+cust.df.bc[ , numcols] <- lapply(cust.df.bc[ ,numcols], autoTransform )
+
+summary(cust.df.bc) # output not shown
+gpairs(cust.df.bc)
+
+spend.m2 <- lm(online.spend ∼ ., data=cust.df.bc)
+summary(spend.m2)
+
+spend.m3 <- lm(online.spend ∼ online.trans, data=cust.df.bc)
+anova(spend.m3, spend.m2)
+
+```
+
+The degree of collinearity in data can be assessed as the variance inflation factor
+(VIF). This estimates how much the standard error (variance) of a coefficient in a
+linear model is increased because of shared variance with other variables, compared
+to the situation if the variables were uncorrelated or simple single predictor regression
+were performed.
+
+```{r}
+library(car)
+
+# NOTE: VIF > 5.0 indicates the need to mitigate collinearity
+vif(spend.m2)
+
+
+```
+
+three general strategies for mitigating collinearity:
+
+• Omit variables that are highly correlated.
+
+• Eliminate correlation by extracting principal components or factors for sets of
+highly correlated predictors (see Chap. 8).
+
+• Use a method that is robust to collinearity, i.e., something other than traditional
+linear modeling. There are too many options to consider this possibility exhaustively,
+but one method to consider would be a random forest
+
+```{r}
+spend.m4 <- lm(online.spend ∼ . -online.trans -store.trans, data=cust.df.bc)
+vif(spend.m4)
+```
+Another approach is to use the principal components of the correlated data. As you
+will recall from Chap. 8, principal components are uncorrelated (orthogonal). Thus,
+PCA provides a way to extract composite variables that are guaranteed to be free of
+collinearity with other variables that are included in the same PCA.
+We use PCA to extract the first component for the online variables, and then do
+this again for the store variables, and add those two initial components to the data
+frame:
+
+```{r}
+pc.online <- prcomp(cust.df.bc[ , c("online.visits", "online.trans")])
+cust.df.bc$online <- pc.online$x[ , 1]
+pc.store <- prcomp(cust.df.bc[ , c("store.trans", "store.spend")])
+cust.df.bc$store <- pc.store$x[ , 1]
+
+spend.m5 <- lm(online.spend ∼ email + age + credit.score + distance.to.store + sat.service + sat.selection + online + store,data=cust.df.bc)
+summary(spend.m5)
+
+```
+
+The core feature of a logistic model is this: it relates the probability of an outcome
+to an exponential function of a predictor variable.
+
+```{r}
+pass.tab <- c(242, 639, 38, 359, 284, 27, 449, 223, 83, 278, 49, 485)
+dim(pass.tab) <- c(3, 2, 2)
+class(pass.tab) <- "table"
+
+dimnames(pass.tab) <- list(Channel=c("Mail", "Park", "Email"), Promo=c("Bundle", "NoBundle"), Pass=c("YesPass", "NoPass") )
+pass.tab
+
+library(vcdExtra) # install if needed
+pass.df <- expand.dft(pass.tab)
+str(pass.df)
+table(pass.df$Pass, pass.df$Promo)
+
+pass.df$Promo <- factor(pass.df$Promo, levels=c("NoBundle", "Bundle"))
+table(pass.df$Pass, pass.df$Promo)
+
+```
+
+The common feature of all GLM models is that they relate
+normally distributed predictors to a non-normal outcome using a function known as
+a link. This means that they are able to fit models for many different distributions
+using a single, consistent framework.
+
+
+```{r}
+pass.m1 <- glm(Pass ∼ Promo, data=pass.df, family=binomial)
+summary(pass.m1)
+plogis(0.3888) / (1-plogis(0.3888))
+
+# or use
+exp(0.3888)
+
+exp(coef(pass.m1))
+exp(confint(pass.m1))
+
+```
+Reconsidering the model
+```{r}
+table(pass.df$Pass, pass.df$Channel)
+
+library(vcd)
+doubledecker(table(pass.df))
+
+pass.m2 <- glm(Pass ∼ Promo + Channel, data=pass.df, family=binomial)
+summary(pass.m2)
+exp(coef(pass.m2))
+
+pass.m3 <- glm(Pass ∼ Promo + Channel + Promo:Channel,data=pass.df, family=binomial)
+summary(pass.m3)
+
+```
+In general, a data set for HLM at an individual level needs multiple observations
+per individual. Such observations may come from responses over time (as in transactions
+or a customer relationship management system (CRM)) or from multiple
+responses at one time (as in a survey with repeated measures). We consider the case
+of conjoint analysis, where a respondent rates multiple items on a survey at one
+time.
+
+How is this different from simply adding the individual, store, or other grouping
+variable as a factor variable in the model? The key difference is that a factor variable
+would add a single term that adjusts the model up or down according to the
+individual. In HLM, however, we can estimate every coefficient—or any that we
+wish—for each individual.
+
+Hierarchical models distinguish two types of
+effects. One type is fixed effects, which are effects that are the same for every respondent. An HLM also estimates random effects, which are additional adjustments to the
+model coefficients estimated for each individual (or group). These are known as
+“random” because they are estimated as random variables that follow a distribution
+around the fixed estimates.
+
+
+
+```{r}
+set.seed(12814)
+resp.id <- 1:200 # respondent ids
+nques <- 16 # number of conjoint ratings per respondent
+speed <- sample(as.factor(c("40", "50", "60", "70")), size=nques, replace=TRUE)
+height <- sample(as.factor(c("200", "300", "400")), size=nques, replace=TRUE)
+const <- sample(as.factor(c("Wood", "Steel")), size= nques, replace=TRUE)
+theme <- sample(as.factor(c("Dragon", "Eagle")), size=nques, replace=TRUE)
+
+profiles.df <- data.frame(speed, height, const, theme)
+profiles.model <- model.matrix(∼ speed + height + const + theme, data=profiles.df)
+library(MASS) # a standard library in R
+weights <- mvrnorm(length(resp.id), mu=c(-3, 0.5, 1, 3, 2, 1, 0, -0.5), Sigma=diag(c(0.2, 0.1, 0.1, 0.1, 0.2, 0.3, 1, 1)))
+
+```
+
+

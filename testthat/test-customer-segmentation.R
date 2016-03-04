@@ -22,3 +22,9 @@ testthat::test_that("replicated_df", {
   assertthat::assert_that(1 == 1)
   
 })
+
+testthat::test_that("intuition is correct",{
+  sim_df <- generateData()
+  assertthat::assert_that(nrow(sim_df)==sum(DEF_SEG_SIZES))
+  
+})
