@@ -71,5 +71,84 @@ read.table(header = T, text= "A B C
 .1 == (.3/3)
 
 
+data_set <- c("the big dog", "the small cat", "the big and fat cow")
+words <- strsplit(data_set, split = " ") #tokenize sentences
+words
+##[[1]]
+##[1] "the" "big" "dog"
+##
+##[[2]]
+##[1] "the"   "small" "cat"  
+##
+##[[3]]
+##[1] "the" "big" "and" "fat" "cow"
 
- 
+
+vec <- unique(unlist(words)) #vector representation of sentences
+##[1] "the"   "big"   "dog"   "small" "cat"   "and"  
+##[7] "fat"   "cow" 
+
+m <- matrix(nrow = length(data_set), ncol = length(vec))
+
+for (i in 1:length(words)) { #iterate the index of tokenized sentences
+  vec_rep <- vec %in% words[[i]] #create binary word-feature vector
+  m[i,] <- vec_rep #update matrix
+}
+
+df <- data.frame(m, row.names = NULL)
+names(df) <- vec
+df
+##   the   big   dog small   cat   and   fat   cow
+##1 TRUE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE
+##2 TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE
+##3 TRUE  TRUE FALSE FALSE FALSE  TRUE  TRUE  TRUE
+
+(target_vec <- df[1,])
+
+numAnimals <- function(target_vec) {
+  animals <- c("dog", "cat", "sheep", "horse", "cow")
+  target_cols <- base::intersect(animals, names(target_vec))
+  
+  
+  num_animals <- sum(as.integer(target_vec[,target_cols]))
+  return(num_animals)
+}
+
+
+dplyr::mutate(df, num_animals = numAnimals())
+
+
+
+# 4 marbles; marbles come in o & x
+#ways <- c(0,3,8,9,0)
+#plaus <- ways/sum(ways)
+#conjectures:  x o x ways plaus
+#      1 oooo  0 4 0 0
+#      2 xooo  1 3 1 3
+#      3 xxoo  2 2 2 8
+#      4 xxxo  3 1 3 9
+#      5 xxxx  4 0 4 0
+      
+      p <- seq(from = 0, to = 1, by = 0.001)
+      observations <- c(1,0,1,1,1,0,1,0,1)
+      
+      getPredPerc <- function(observations, p) {
+        
+        out_vec <- numeric(length(p))
+        i <- 1
+        
+        for (x in p) {
+          y <- 1 - x
+          num_x <-sum(observations)
+          num_y <- length(observations) - num_x
+          res <- (x^num_x)*(y^num_y)
+          out_vec[i] <- res
+          i <- i + 1
+        }
+        
+        p_index <- which(out_vec == max(out_vec))
+        p[p_index]
+      }  
+      
+    getPredPerc(observations = observations, p = p)      
+      
