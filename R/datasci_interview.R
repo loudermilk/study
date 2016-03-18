@@ -129,26 +129,75 @@ dplyr::mutate(df, num_animals = numAnimals())
 #      4 xxxo  3 1 3 9
 #      5 xxxx  4 0 4 0
       
-      p <- seq(from = 0, to = 1, by = 0.001)
-      observations <- c(1,0,1,1,1,0,1,0,1)
       
-      getPredPerc <- function(observations, p) {
+      observations <- c(1,0,1,1,1,0,1,0,1)
+      size <- 9
+      x <- 6
+p <- .5
+      
+      getPredPerc <- function(x, size) {
+        parameters <- seq(from = 0, to = 1, by = 0.001)
         
-        out_vec <- numeric(length(p))
+        out_vec <- numeric(length(parameters))
         i <- 1
         
-        for (x in p) {
-          y <- 1 - x
-          num_x <-sum(observations)
-          num_y <- length(observations) - num_x
-          res <- (x^num_x)*(y^num_y)
+        for (p in parameters) {
+          y <- 1 - p
+          res <- (p^x)*(y^(size - x))
+          choose(size,6)*res
+          
+          
           out_vec[i] <- res
           i <- i + 1
         }
-        
+        print(paste("max plaus", max(out_vec)))
         p_index <- which(out_vec == max(out_vec))
-        p[p_index]
+        parameters[p_index]
       }  
       
-    getPredPerc(observations = observations, p = p)      
-      
+    getPredPerc(x = x, size = size)      
+    
+
+x <- c(3,5,7,9)        
+y <- c(2,4,6,8)
+expected <- c(7,23,47,79)
+f1 <- function(x,y) {x*y + x - 2} #x(y+1) - 2
+f2 <- function(x,y) {x*y + y - 1} #y(x+1) - 1
+f3 <- function(x) {x*x - 2} #x^2-2
+
+assertthat::assert_that(sum(expected-f1(x,y))==0)
+assertthat::assert_that(sum(expected-f2(x,y))==0)
+assertthat::assert_that(sum(expected-f3(x))==0)
+
+foo(10,9)
+
+
+
+
+
+data_set <- c("the big bad dog", "the small bad cat", "a silly skunk on a log")
+words <- strsplit(data_set, split = " ") #tokenize sentences
+vec <- unique(unlist(words)) #vector representation of sentences
+# [1] "the"   "big"   "bad"   "dog"   "small" "cat"   "a"     "silly" "skunk" "on"    "log" 
+
+m <- matrix(nrow = length(data_set), ncol = length(vec))
+
+for (i in 1:length(words)) { #iterate the index of tokenized sentences
+  vec_rep <- as.integer(vec %in% words[[i]]) #create binary word-feature vector
+  m[i,] <- vec_rep #update matrix
+}
+
+df <- data.frame(m, row.names = NULL)
+names(df) <- vec
+df
+
+cosineSimilarity <- function(df, row1, row2){
+  x <- as.numeric(df[row1,])
+  y <- as.numeric(df[row2,])
+  (x %*% y) / (sqrt(x%*%x * y%*%y))
+  
+}
+
+cosineSimilarity(df,1,1)
+cosineSimilarity(df,1,2)
+cosineSimilarity(df,1,3)
