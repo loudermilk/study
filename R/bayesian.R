@@ -188,3 +188,6 @@ abline(v = total_1b_boys)
 # observed counts of boys in your simulations to the actual observed count of
 # boys following girls. How does the model look in this light? Any guesses what is going
 # on in this data?
+
+
+
