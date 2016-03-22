@@ -189,5 +189,310 @@ abline(v = total_1b_boys)
 # boys following girls. How does the model look in this light? Any guesses what is going
 # on in this data?
 
+# Ch. 4
+
+# simulate num_people standing on mid-line of soccer field, each of
+# which flips a coin num_flips times. Any process that adds together
+# random values from the same distribution converges towards
+# a normal.
+num_people <- 1e5
+num_flips <- 16
+pos <- replicate(num_people, sum(runif(num_flips, -1, 1)))
+hist(pos)
+dens(pos)
+
+# 4.1.2 Normal by multiplication
+
+# sample 12 random numbers between 1 and 1.1 indicating proportional
+# grow: 1 = no grow, 1.1 = 10% increase
+prod(1 + runif(12,0,0.1))
+
+growth <- replicate(1e4, prod(1 + runif(12,0,0.1)))
+dens(x = growth, norm.comp = TRUE)
+
+# small products are approximately normal
+big <- replicate(1e4, prod(1 + runif(12,0,0.5)))
+dens(big, norm.comp = TRUE)
+small <- replicate(1e4, prod(1 + runif(12,0,0.01)))
+dens(small, norm.comp = TRUE)
 
 
+# 4.1.3 Normal by log-multiplication
+# large deviates that are multiplied together do not produce
+# guassian dirstributions, but they do tend to produce
+# guassian distributions are the log scale.
+
+log.big <- replicate(1e4, log(prod(1 + runif(12,0,0.5))))
+dens(big, norm.comp = TRUE)
+dens(log.big, norm.comp = TRUE)
+
+
+# ~ indicates a stochastic relationship - a mapping of a 
+# variable/parameter onto a distribution.
+
+# 4.6
+
+w <- 6; n <- 9
+p_grid <- seq(from = 0, to = 1, length.out = 100)
+posterior <- dbinom(x = w, size = n, prob = p_grid) *dunif(p_grid, 0, 1)
+posterior <- posterior/sum(posterior)
+
+
+# 4.7
+
+library(rethinking)
+data(Howell1)
+d <- Howell1
+
+head(d)
+# going to only analyze adults, b/c age correlates with height
+
+d2 <- d[d$age >= 18,]
+dens(d2$height)
+
+# general model
+#h ~ Normal(m, s)
+#m ~ Normal(178, 20)
+#s - Uniform(0,50)
+
+#plot priors
+curve(dnorm(x, 178, 20), from = 100, to = 250)
+curve(dunif(x, 0, 50), from = -10, to = 60)
+
+sample_mu <- rnorm(1e4, 178, 20)
+sample_sigma <- runif(1e4, 0, 50)
+prior_h <- rnorm(1e4, sample_mu, sample_sigma)
+dens(prior_h)
+
+
+# 4.14
+mu.list <- seq(from=140, to=160, length.out = 200)
+sigma.list <- seq(from=4, to=9, length.out = 200)
+post <- expand.grid(mu=mu.list, sigma=sigma.list)
+
+post$LL <- sapply(1:nrow(post), function(i){
+  sum(dnorm(
+    d2$height,
+    mean = post$mu[i],
+    sd = post$sigma[i],
+    log = TRUE
+  ))
+})
+post$prod <- post$LL + dnorm(post$mu, 178, 20, TRUE) +
+  dunif(post$sigma, 0, 50, TRUE)
+post$prob <- exp(post$prod - max(post$prod))
+
+contour_xyz(post$mu, post$sigma, post$prob)
+image_xyz(post$mu, post$sigma, post$prob)
+
+# 4.17
+sample.rows <- sample(1:nrow(post), size = 1e4, replace = TRUE, prob = post$prob)
+sample.mu <- post$mu[sample.rows]
+sample.sigma <- post$sigma[sample.rows]
+
+plot(sample.mu, sample.sigma, cex = 0.5, pch=16, col=col.alpha(rangi2,0.1))
+dens(sample.mu)
+dens(sample.sigma)
+HPDI(sample.mu)
+HPDI(sample.sigma)
+
+
+# 4.21
+d3 <- sample(d2$height, size = 20)
+
+mu.list <- seq(from=150, to=170, length.out = 200)
+sigma.list <- seq(from=4, to=20, length.out = 200)
+post2 <- expand.grid(mu = mu.list, sigma = sigma.list)
+
+post2$LL <- sapply(1:nrow(post2), function(i)
+  sum(dnorm(d3,mean=post2$mu[i], sd=post2$sigma[i], log = TRUE)))
+
+post2$prod <- post2$LL + dnorm(post2$mu, 178, 20, TRUE) + 
+  dunif(post2$sigma, 0, 50, TRUE)
+
+
+post2$prob <- exp(post2$prod - max(post2$prod))
+
+sample2.rows <- sample(1:nrow(post2), size = 1e4, replace = TRUE, prob = post2$prob)
+
+sample2.mu <- post2$mu[sample2.rows]
+sample2.sigma <- post2$sigma[sample2.rows]
+plot(sample2.mu, sample2.sigma, cex = 0.5, 
+     col = col.alpha(rangi2,0.1), xlab = "mu",
+     ylab = "sigma", pch = 16)
+
+# 4.23
+#  shows large tail of uncertainty for high values
+dens(sample2.sigma, norm.comp = TRUE)
+
+## QUADRATIC APPROXIMATION
+# the posterior's peak will lie at the maximum a posteriori estimate (MAP)
+# and we can get a useful approximation of the images shape using quad approx.
+
+library(rethinking)
+data(Howell1)
+d <- Howell1
+d2 <- d[d$age >= 18, ]
+
+# model definition
+# h_i ~ Normal(mu, sigma) 
+# mu ~ Normal(178, 20)
+# sigma ~ Uniform(0, 50)
+
+# put R-code equivalents into a list
+flist <- alist(
+  height ~ dnorm(mu, sigma),
+  mu ~ dnorm(178, 20),
+  sigma ~ dunif(0, 50)
+)
+head(d2)
+m4.1 <- map(flist = flist, data = d2)
+summary(m4.1)
+
+# specify a start for hill climbing
+start <- list(
+  mu = mean(d2$height),
+  sigma = sd(d2$height)
+)
+
+m4.2 <- map(alist(
+  height ~ dnorm(mu, sigma),
+  mu ~ dnorm(178, 0.1),
+  sigma ~ dunif(0, 50)
+), 
+data = d2)
+
+summary(m4.1)
+
+vcov(m4.1)
+
+diag(vcov(m4.1))
+cov2cor(vcov(m4.1))
+
+# sample vectors of values from a multi-dimensional gaussian distribution
+library(rethinking)
+post <- extract.samples(m4.1, n = 1e4)
+head(post)
+precis(post)
+summary(m4.1)
+
+
+plot(d2$height ~ d2$weight)
+
+# let x = list of predictor values (weight)
+# h_i ~ Normal(mu_i, sigma)
+# mu_i = alpha + beta * x_i #not stochastic, rather deterministic
+# alpha ~ Normal(178, 100)
+# beta ~ Normal(0, 10)
+# sigma ~ Uniform(0, 50)
+
+library(rethinking)
+data("Howell1")
+d <- Howell1
+d2 <- d[d$age >= 18, ]
+
+#fit model
+flist <- alist(
+  height ~ dnorm(mean = mu, sd = sigma),
+  mu <- a + b*weight,
+  a ~ dnorm(156, 100),
+  b ~ dnorm(0, 10),
+  sigma <- dunif(0, 50)
+)
+
+m4.3 <- map(flist = flist, data = d2)
+precis(m4.3)
+
+# choose plotting over tables - plot implcations of models to determine
+# (1) whether or not the model fitting procedure worked correctly
+# (2) abs magnitude of a relationship between outcome and predictor
+# (3) uncertainty surrounding an average relationship
+# (4) uncertainty surrounding implied predictions of the model, as these
+# are distinct from mere parameter uncertainty.
+
+# almost a perfect neg corr b/w parameters a and b
+precis(m4.3, corr=TRUE)
+
+# CENTERING - procedure of subtracting the mean of a variable from each value.
+d2$weight.c <- d2$weight - mean(d2$weight)
+mean(d2$weight.c) # mean is zero
+
+# refit model
+flist <- alist(
+  height ~ dnorm(mean = mu, sd = sigma),
+  mu <- a + b*weight.c,
+  a ~ dnorm(156, 100),
+  b ~ dnorm(0, 10),
+  sigma <- dunif(0, 50)
+)
+
+m4.4 <- map(flist = flist, data = d2)
+coef(m4.4)
+precis(m4.4, corr = TRUE)
+# intercept now means expected value of y when x is at average value
+
+coef(m4.4)["a"]
+# 4.45
+plot(height ~ weight, data = d2)
+abline(a = coef(m4.3)["a"], b = coef(m4.3)["b"], col = "red")
+
+post <- extract.samples(m4.3)
+
+# let's work with a subset of the data
+set.seed(100)
+
+
+N <- 10
+dN <- d2[1:N, ]
+flist <- alist(
+  height ~ dnorm(mu, sigma),
+  mu <- a + b*weight ,
+  a ~ dnorm(178, 100),
+  b ~ dnorm(0, 10),
+  sigma ~ dunif(0, 50)
+)
+mN <- map(flist = flist, data = dN)
+
+post <- extract.samples(mN, n=20)
+
+plot(dN$weight, dN$height, 
+     xlim = range(d2$weight), ylim = range(d2$height), 
+     col = rangi2, xlab = "weight", ylab= "height")
+mtext(paste0("N = ", N))
+
+for (i in 1:20) {
+  abline(a = post$a[i], b = post$b[i], col = col.alpha("black", 0.3))
+}
+mu_at_50 <- post$a + post$b * 50
+
+# not consistent with plot in book
+dens(mu_at_50, col = rangi2, lwd = 2)
+
+mu <- link(m4.3)
+str(mu)
+
+# 4.54
+
+weight.seq <- seq(from = 25, to = 70, by = 1)
+mu <- link(fit = m4.3, data = data.frame(weight = weight.seq))
+str(mu)
+plot(height ~ weight, d2, type="n")
+for (i in 1:100) {
+  points(weight.seq, mu[i,], pch=16, col = col.alpha(rangi2, 0.1))
+}
+
+mu.mean <- apply(mu, 2, mean)
+mu.HPDI <- apply(mu, 2, HPDI, prob=.89)
+
+# 4.57
+plot(height ~ weight, data = d2, col = col.alpha(rangi2,0.5))
+lines(weight.seq, mu.mean)
+shade(mu.HPDI, weight.seq)
+
+# recipe for generating predictions and intervals from the posterior of a fit model
+# (1) use link to generate distributions of posterior values for mu. the default
+# behavior of link is to use the original data, so you have to pass it a list of
+# new horizontal axis values you want to plot posterior predictions across.
+# (2) use summary functions like mean or HPDI or PI to find averages and lower/upper
+# bounds for each mu for each value of the predictor variable.
+# (3) use plotting functions like lines and shade to draw the lines and intervals.
