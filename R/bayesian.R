@@ -496,3 +496,5 @@ shade(mu.HPDI, weight.seq)
 # (2) use summary functions like mean or HPDI or PI to find averages and lower/upper
 # bounds for each mu for each value of the predictor variable.
 # (3) use plotting functions like lines and shade to draw the lines and intervals.
+
+
