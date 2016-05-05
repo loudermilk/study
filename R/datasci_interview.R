@@ -175,15 +175,19 @@ foo(10,9)
 
 
 
-data_set <- c("the big bad dog", "the small bad cat", "a silly skunk on a log")
+data_set <- c("the big bad dog", 
+              "the small cat and the orange cat", 
+              "the big big dog")
 words <- strsplit(data_set, split = " ") #tokenize sentences
 vec <- unique(unlist(words)) #vector representation of sentences
-# [1] "the"   "big"   "bad"   "dog"   "small" "cat"   "a"     "silly" "skunk" "on"    "log" 
 
 m <- matrix(nrow = length(data_set), ncol = length(vec))
 
 for (i in 1:length(words)) { #iterate the index of tokenized sentences
-  vec_rep <- as.integer(vec %in% words[[i]]) #create binary word-feature vector
+  tokens <- words[[i]]
+  
+  
+  vec_rep <- as.integer(sapply(vec, function(w){sum( w == tokens)})) #create binary word-feature vector
   m[i,] <- vec_rep #update matrix
 }
 
@@ -191,13 +195,19 @@ df <- data.frame(m, row.names = NULL)
 names(df) <- vec
 df
 
+##  the big bad dog small cat and orange
+##1   1   1   1   1     0   0   0      0
+##2   2   0   0   0     1   2   1      1
+##3   1   2   0   1     0   0   0      0
+
+
+
 cosineSimilarity <- function(df, row1, row2){
   x <- as.numeric(df[row1,])
   y <- as.numeric(df[row2,])
   (x %*% y) / (sqrt(x%*%x * y%*%y))
-  
 }
 
-cosineSimilarity(df,1,1)
-cosineSimilarity(df,1,2)
-cosineSimilarity(df,1,3)
+cosineSimilarity(df,1,1) #1.00
+cosineSimilarity(df,1,2) #0.30
+cosineSimilarity(df,1,3) #0.82

@@ -12,7 +12,6 @@ brand.sc <- brand.ratings
 brand.sc[ ,attr_cols] <- scale(brand.sc[,attr_cols])
 summary(brand.sc)
 
-
 # Analysis of a correlation plot reveals three likely clusters:
 # {fun, latest, trendy}, {rebuy, bargain, value}, and 
 # {perform, leader, serious}
