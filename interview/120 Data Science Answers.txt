@@ -1,0 +1,551 @@
+PREDICTIVE MODELING (19 QUESTIONS)
+
+If asked to predict a response variable during your interview, you should favor simpler models that run quickly and which you can easily explain. If the task is specifically a predictive modeling task, you should try to do, or at least mention, cross-validation as it really is the golden standard to evaluate the quality of one’s model. Talk about and justify your approach while you’re doing it, and leave some time to plot and visualize the data.
+
+
+1 (Given a Dataset) Analyze this dataset and give me a model that can predict this response variable.
+
+Answer: Classification or Regression, go through the data analysis pipeline
+
+
+2 What could be some issues if the distribution of the test data is significantly different than the distribution of the training data?
+
+Answer: Basically, you are going to make bad predictions because of covariate shift. Use logistic regression for covariate shift correction. Weight the training data according to the difference in density between the training set and the test set. Get the weighting by using logistic regression.
+
+
+3 What are some ways I can make my model more robust to outliers?
+
+Answer: If the data come from a known distribution (e.g., Gaussian), then we can define the shape of the data, where outlying observations are far from the fit shape. For example, a robust covariance estimate can fit an ellipse to the central data points, ignoring points outside the central mode. Assuming that the inlier data are Gaussian distributed, it will estimate the inlier location and covariance in a robust way (i.e. without being influenced by outliers). The Mahalanobis distances obtained from this estimate are used to derive a measure of outlyingness.
+
+
+4 What are some differences you would expect in a model that minimizes squared error, versus a model that minimizes absolute error? In which cases would each error metric be appropriate?
+
+Answer: Minimizing the sum of absolute errors gives you an estimate of the conditional median, whereas minimizing sum of squared errors gives you a conditional mean.
+
+
+5 What error metric would you use to evaluate how good a binary classifier is? What if the classes are imbalanced? What if there are more than 2 groups?
+
+Answer: ROC Curve (False positive rate vs. True positive rate), Precision-Recall Curves for evaluating a binary classifier; For imbalanced classes, use rates instead of absolute numbers, for example True Positive Rate (TPR) and False Negative Rate (FNR); Confusion matrices for more than 2 groups
+
+
+6 What are various ways to predict a binary response variable? Can you compare two of them and tell me when one would be more appropriate? What’s the difference between these? (SVM, Logistic Regression, Naive Bayes, Decision Tree, etc.)
+
+Answer:
+
+Advantages of Naive Bayes: Super simple, you're just doing a bunch of counts. If the NB conditional independence assumption actually holds, a Naive Bayes classifier will converge quicker than discriminative models like logistic regression, so you need less training data. And even if the NB assumption doesn't hold, a NB classifier still often performs surprisingly well in practice. A good bet if you want to do some kind of semi-supervised learning, or want something embarrassingly simple that performs pretty well.
+
+Advantages of Logistic Regression: Lots of ways to regularize your model, and you don't have to worry as much about your features being correlated, like you do in Naive Bayes. You also have a nice probabilistic interpretation, unlike decision trees or SVMs, and you can easily update your model to take in new data (using an online gradient descent method), again unlike decision trees or SVMs. Use it if you want a probabilistic framework (e.g., to easily adjust classification thresholds, to say when you're unsure, or to get confidence intervals) or if you expect to receive more training data in the future that you want to be able to quickly incorporate into your model.
+
+Advantages of Decision Trees: Easy to interpret and explain (for some people -- I'm not sure I fall into this camp). Non-parametric, so you don't have to worry about outliers or whether the data is linearly separable (e.g., decision trees easily take care of cases where you have class A at the low end of some feature x, class B in the mid-range of feature x, and A again at the high end). Their main disadvantage is that they easily overfit, but that's where ensemble methods like random forests (or boosted trees) come in. Plus, random forests are often the winner for lots of problems in classification (usually slightly ahead of SVMs, I believe), they're fast and scalable, and you don't have to worry about tuning a bunch of parameters like you do with SVMs, so they seem to be quite popular these days.
+
+Advantages of SVMs: High accuracy, nice theoretical guarantees regarding overfitting, and with an appropriate kernel they can work well even if your data isn't linearly separable in the base feature space. Especially popular in text classification problems where very high-dimensional spaces are the norm. Memory-intensive and kind of annoying to run and tune, though, so I think random forests are starting to steal the crown.
+
+To go back to the particular question of logistic regression vs. decision trees (which I'll assume to be a question of logistic regression vs. random forests) and summarize a bit: both are fast and scalable, random forests tend to beat out logistic regression in terms of accuracy, but logistic regression can be updated online and gives you useful probabilities. And since you're at Square (not quite sure what an inference scientist is, other than the embodiment of fun) and possibly working on fraud detection: having probabilities associated to each classification might be useful if you want to quickly adjust thresholds to change false positive/false negative rates, and regardless of the algorithm you choose, if your classes are heavily imbalanced (as often happens with fraud), you should probably resample the classes or adjust your error metrics to make the classes more equal.
+
+
+7 What is regularization and where might it be helpful? What is an example of using regularization in a model?
+
+Answer: According to Wikipedia, regularization "refers to a process of introducing additional information in order to solve an ill-posed problem or to prevent overfitting. This information is usually of the form of a penalty for complexity, such as restrictions for smoothness or bounds on the vector space norm."
+
+
+8 Why might it be preferable to include fewer predictors over many?
+
+Answer: Prevent overfitting by generalizing to more cases
+
+
+9 Given training data on tweets and their retweets, how would you predict the number of retweets of a given tweet after 7 days after only observing 2 days worth of data?
+
+Answer: I would try a combination of methods: a simulation involving a Poisson model based on tweet arrival data, but also a generalized linear model to see if regression works
+
+
+10 How could you collect and analyze data to use social media to predict the weather?
+
+Answer: First, you would need a person’s location to pinpoint the regional weather. Then, you would compare the social text against a weather corpus to predict general conditions.
+
+
+11 How would you construct a feed to show relevant content for a site that involves user interactions with items?
+
+Answer: 
+
+
+12 How would you design the people you may know feature on LinkedIn or Facebook?
+
+Answer: First, look for same company, then shared contacts, same industry, same location, shared keywords.
+
+13 How would you predict who someone may want to send a Snapchat or Gmail to?
+
+Answer: Contact list, message frequency, time of day
+
+14 How would you suggest to a franchise where to open a new store?
+
+Answer: Distance from other franchises, location, proximity to other stores
+
+15 In a search engine, given partial data on what the user has typed, how would you predict the user’s eventual search query?
+
+Answer: Bag of words approach, n-grams, compute distances between “nearest” phrases
+
+16 Given a database of all previous alumni donations to your university, how would you predict which recent alumni are most likely to donate?
+
+Answer: Frequency and amount of donations, other information such as occupation, major, demographics
+
+17 You’re Uber and you want to design a heatmap to recommend to drivers where to wait for a passenger. How would you approach this?
+
+Answer: 
+
+18 How would you build a model to predict a March Madness bracket?
+
+Answer: Describe how I did it in Kaggle.
+
+19 You want to run a regression to predict the probability of a flight delay, but there are flights with delays of up to 12 hours that are really messing up your model. How can you address this?
+
+Answer: You can use a robust regression model based on data that are not normally distributed, for example, fat tails.
+
+
+PROGRAMMING (14 QUESTIONS)
+
+Traditional software engineering questions may show up in data science interviews. Expect those questions to be easier, less about systems, and more about your ability to manipulate data, read databases, and do simple programming tasks. Review your SQL and prepare to do common operations such as JOIN, GROUP BY, and COUNT. Review ways to manipulate data and strings (we suggest doing this in Python), so you can answer questions that involve sifting through numerical or string data.
+
+
+1 Write a function to calculate all possible assignment vectors of 2n users, where n users are assigned to group 0 (control), and n users are assigned to group 1 (treatment).
+
+Answer: Get the combinations(users, n) and then pair the extremes of the vector.
+
+2 Given a list of tweets, determine the top 10 most used hashtags.
+
+Answer: Use a Python defaultdict (int), then increments counts for each t in corpus tweets, sort the count dict in descending order, showing the top 10
+
+3 Program an algorithm to find the best approximate solution to the knapsack problem1 in a given time. See http://en.wikipedia.org/wiki/Knapsack_problem
+
+Answer: Greedy algorithm http://rosettacode.org/wiki/Knapsack_problem/Continuous#Python
+
+4 Program an algorithm to find the best approximate solution to the traveling salesman problem2 in a given time. See http://en.wikipedia.org/wiki/Travelling_salesman_problem
+
+Answer: 
+
+5 You have a stream of data coming in of size n, but you don’t know what n is ahead of time. Write an algorithm that will take a random sample of k elements. Can you write one that takes O(k) space?
+
+Answer: 
+
+6 Write an algorithm that can calculate the square root of a number.
+
+Answer: Newton’s Method y = (x + a/x) / 2
+
+7 Given a list of numbers, can you return the outliers?
+
+Answer: Calculate the IQR using Q1 and Q3, then any numbers that are either 1.5 times below Q1 or above Q3 
+
+8 When can parallelism make your algorithms run faster? When could it make your algorithms run slower?
+
+Answer: Parallelism can make your algorithms faster when you can break down a task into independent jobs, e.g., MapReduce. Parallelism can make your algorithms run slower when there is competition for limited resources, e.g., independent threads need access to the same resource simultaneously.
+
+9 What are the different types of joins? What are the differences between them?
+
+Answer: Inner Join, Outer Join, Left Join, Right Join
+
+10 Why might a join on a subquery be slow? How might you speed it up?
+
+Answer: 
+
+11 Describe the difference between primary keys and foreign keys in a SQL database.
+
+Answer: The primary key uniquely identifies a record in the table, and a foreign key is a key in the table that is a primary key in another table. 
+
+
+12 Given a COURSES table with columns course_id and course_name, a FACULTY table with columns faculty_id and faculty_name, and a COURSE_FACULTY table with columns faculty_id and course_id, how would you return a list of faculty who teach a course given the name of a course?
+
+Answer: select 
+
+13 Given a IMPRESSIONS table with ad_id, click (an indicator that the ad was clicked), and date, write a SQL query that will tell me the click-through-rate of each ad by month.
+
+Answer: 
+
+14 Write a query that returns the name of each department and a count of the number of employees in each:EMPLOYEES containing: Emp_ID (Primary key) and Emp_Name EMPLOYEE_DEPT containing: Emp_ID (Foreign key) and Dept_ID (Foreign key)DEPTS containing: Dept_ID (Primary key) and Dept_Name
+
+Answer: 
+
+
+
+PROBABILITY (19 QUESTIONS)
+
+Many Bayes’ Rule questions can be solved quickly with the odds form of Bayes Rule, which says that prior odds times likelihood ratio is the posterior odds. For problem 18, the prior odds is 1:1 and the likelihood ratio is 1/4:9/16, so the posterior odds is 4:9. For problem 19, the prior odds is 999:1 and the likelihood ratio is 1/1024:1 (10 heads has a 1/1024 probability with a fair coin and a 1 probability with a biased coin), which means the posterior odds is about 1:1.
+
+
+1 Bobo the amoeba has a 25%, 25%, and 50% chance of producing 0, 1, or 2 offspring, respectively. Each of Bobo’s descendants also have the same probabilities. What is the probability that Bobo’s lineage dies out?
+
+Answer: (0.25 * 0 + 0.25 * 1 + 0.5 * 2) / 3 = 0.417
+
+2 In any 15-minute interval, there is a 20% probability that you will see at least one shooting star. What is the probability that you see at least one shooting star in the period of an hour?
+
+Answer: 
+
+3 How can you generate a random number between 1 - 7 with only a die?
+
+Answer: Create a function that simulates a die, returning a random number between 1 and 6. Since getting the number 7 will require two rolls of the die, which means 6 times 6 = 36 possible outcomes. Then, we just get the remainder of the total divided by 7 to assign the number between 1 and 7.
+
+4 How can you get a fair coin toss if someone hands you a coin that is weighted to come up heads more often than tails?
+
+Answer: Toss the coin twice. If HH or TT shows up, ignore the result. If HT, then select heads. If TH, select tails. The bias is removed because the latter two results have equal probabilities.
+
+5 You have an 50-50 mixture of two normal distributions with the same standard deviation. How far apart do the means need to be in order for this distribution to be bimodal?
+
+Answer: A mixture of two normal distributions with equal standard deviations is bimodal only if their means differ by at least twice the common standard deviation.
+
+6 Given draws from a normal distribution with known parameters, how can you simulate draws from a uniform distribution?
+
+Answer: 
+
+7 A certain couple tells you that they have two children, at least one of which is a girl. What is the probability that they have two girls?
+
+Answer: Eliminate BB, leaving GG, BG, and GB. Given that one of them is already a girl, that means only GG is a possibility, leaving 1 out of 3, or a probability of 1/3.
+
+8 You have a group of couples that decide to have children until they have their first girl, after which they stop having children. What is the expected gender ratio of the children that are born? What is the expected number of children each couple will have?
+
+Answer:
+
+9 How many ways can you split 12 people into 3 teams of 4?
+
+Answer: 12 choose 410 Your hash function assigns each object to a number between 1:10, each with equal probability. With 10 objects, what is the probability of a hash collision? What is the expected number of hash collisions? What is the expected number of hashes that are unused.
+
+Answer: math.factorial(10) / (10 ^ 10) is the probability of no collision = 0.00036288, so the probability of a collision = 1 - 0.00036288
+
+11 You call 2 UberX’s and 3 Lyfts. If the time that each takes to reach you is IID, what is the probability that all the Lyfts arrive first? What is the probability that all the UberX’s arrive first?
+
+Answer:
+
+12 I write a program should print out all the numbers from 1 to 300, but prints out Fizz instead if the number is divisible by 3, Buzz instead if the number is divisible by 5, and FizzBuzz if the number is divisible by 3 and 5. What is the total number of numbers that is either Fizzed, Buzzed, or FizzBuzzed?
+
+Answer: 300 / (3 * 5) = 20 FizzBuzz, 300 / 3 = 100 - 20 = 80 Fizz, 300 / 5 = 60 - 20 = 40 Buzz
+
+13 On a dating site, users can select 5 out of 24 adjectives to describe themselves. A match is declared between two users if they match on at least 4 adjectives. If Alice and Bob randomly pick adjectives, what is the probability that they form a match?
+
+Answer:
+
+14 A lazy high school senior types up application and envelopes to n different colleges, but puts the applications randomly into the envelopes. What is the expected number of applications that went to the right college?
+
+Answer:
+
+15 Let’s say you have a very tall father. On average, what would you expect the height of his son to be? Taller, equal, or shorter? What if you had a very short father?
+
+Answer: The height of the son will probably be shorter for a very tall father, and the height of the son will probably be taller for a very short father. This is known as regression to the mean.
+
+16 What’s the expected number of coin flips until you get two heads in a row? What’s the expected number of coin flips until you get two tails in a row?
+
+Answer: e = (1/2)*(e+1) + (1/4)*(e+2) + (1/8)*(2) = 5
+
+17 Let’s say we play a game where I keep flipping a coin until I get heads. If the first time I get heads is on the nth coin, then I pay you 2n-1 dollars. How much would you pay me to play this game?
+
+Answer:
+
+18 You have two coins, one of which is fair and comes up heads with a probability 1/2, and the other which is biased and comes up heads with probability 3/4. You randomly pick a coin and flip it twice, and get heads both times. What is the probability that you picked the fair coin?
+
+Answer: The prior odds is 1:1 and the likelihood ratio is 1/4:9/16, so the posterior odds is 4:9.
+
+19 You have a 0.1% chance of picking up a coin with both heads, and a 99.9% chance that you pick up a fair coin. You flip your coin and it comes up heads 10 times. What’s the chance that you picked up the fair coin, given the information that you observed?
+
+Answer: The prior odds is 999:1 and the likelihood ratio is 1/1024:1 (10 heads has a 1/1024 probability with a fair coin and a 1 probability with a biased coin), which means the posterior odds is about 1:1.
+
+
+
+
+STATISTICAL INFERENCE (15 QUESTIONS)
+
+Proper A/B testing practices are often a common discussion, especially because it easily becomes more complicated than anticipated in practice. Multiple variants and metrics, simultaneous conflicting experiments, and improper randomization will complicate experiments. Most people do not have a formal academic background on experimental design.
+
+
+1 In an A/B test, how can you check if assignment to the various buckets was truly random?
+
+Answer:
+
+2 What might be the benefits of running an A/A test, where you have two buckets who are exposed to the exact same product?
+
+Answer: The benefits are that you can measure the degree of random effects.
+
+3 What would be the hazards of letting users sneak a peek at the other bucket in an A/B test?
+
+Answer: You would be introducing bias into the results.
+
+4 What would be some issues if blogs decide to cover one of your experimental groups?
+
+Answer: The principle that observation affects the outcome, and the blogs could skew the results.
+
+5 How would you conduct an A/B test on an opt-in feature?
+
+Answer: 
+
+6 How would you run an A/B test for many variants, say 20 or more?
+
+Answer: Multivariate testing or multi-armed bandits
+
+7 How would you run an A/B test if the observations are extremely right-skewed?
+
+Answer: 
+
+8 I have two different experiments that both change the sign-up button to my website. I want to test them at the same time. What kinds of things should I keep in mind?
+
+Answer:
+
+9 What is a p-value? What is the difference between type-1 and type-2 error?
+
+Answer: A p-value is a measure of statistical significance for accepting or rejecting a hypothesis. A low p-value indicates that . A Type-1 Error is a False Positive, and a Type-2 Error is a False Negative.
+
+10 You are AirBnB and you want to test the hypothesis that a greater number of photographs increases the chances that a buyer selects the listing. How would you test this hypothesis?
+
+Answer:
+
+11 How would you design an experiment to determine the impact of latency on user engagement?
+
+Answer: 
+
+12 What is maximum likelihood estimation? Could there be any case where it doesn’t exist?
+
+Answer: MLE is a method of estimating the parameters of a statistical model. Given a data set and a model, MLE provides estimates for the model’s parameters.
+
+13 What’s the difference between a MAP, MOM, MLE estimator? In which cases would you want to use each?
+
+Answer: The method of moments (MOM) is a method of estimation of population parameters (consistent but biased). 
+
+14 What is a confidence interval and how do you interpret it?
+
+Answer: A confidence interval is the measure of a reliability of an estimate. 
+
+15 What is unbiasedness as a property of an estimator? Is this always a desirable property when performing inference? What about in data analysis or predictive modeling?
+
+Answer:
+
+
+DATA ANALYSIS (27 QUESTIONS)
+
+Some concepts that are important in data analysis and common in the field, include over- fitting, regression towards the mean, curse of dimensionality, importance of visualization, and inductive bias. These questions test your knowledge and experience with some of the hazards of blind data analysis and your ability to distinguish a significant result from a spurious one.
+
+
+1 (Given a Dataset) Analyze this dataset and tell me what you can learn from it.
+
+Answer: See Kaggle Examples.
+
+2 What is R2? What are some other metrics that could be better than R2 and why?
+
+Answer: R-Squared is the coefficient of determination, a statistic between 0 and 1 which measures the degree of fit to a model. AIC and BIC are alternative metrics.
+
+3 What is the curse of dimensionality?
+
+Answer: 
+
+4 Is more data always better?
+
+Answer:
+
+5 What are advantages of plotting your data before performing analysis?
+
+Answer: Exploratory analysis is a way of visually examining relationships in the data. For example, scatterplot matrices can show dependencies among pairs of features.
+
+6 How can you make sure that you don’t analyze something that ends up meaningless?
+
+Answer: You must distinguish between correlation and causation. 
+
+7 What is the role of trial and error in data analysis? What is the role of making a hypothesis before diving in?
+
+Answer: The role of trial and error in data analysis is to generate a series of ad hoc models for comparison. The reason for making an initial hypothesis is to then test a series of models against the hypothesis.
+
+8 How can you determine which features are the most important in your model?
+
+Answer: If it’s a random forest, then we can derive the feature importances based on the GINI index or entropy.
+
+9 How do you deal with some of your predictors being missing?
+
+Answer: Multiple Imputation to replace each missing value with a set of plausible values to represent the uncertainty associated with the missing values.
+
+10 You have several variables that are positively correlated with your response, and you think combining all of the variables could give you a good prediction of your response. However, you see that in the multiple linear regression, one of the weights on the predictors is negative. What could be the issue?
+
+Answer:
+
+11 Let’s say you’re given an unfeasible amount of predictors in a predictive modeling task. What are some ways to make the prediction more feasible?
+
+Answer: Dimension Reduction, Principal Component Analysis
+
+12 Now you have a feasible amount of predictors, but you’re fairly sure that you don’t need all of them. How would you perform feature selection on the dataset?
+
+Answer: Recursive Feature Elimination, Subset Regression
+
+13 Your linear regression didn’t run and communicates that there are an infinite number of best estimates for the regression coefficients. What could be wrong?
+
+Answer:
+
+14 You run your regression on different subsets of your data, and find that in each subset, the beta value for a certain variable varies wildly. What could be the issue here?
+
+Answer:
+
+15 What is the main idea behind ensemble learning? If I had many different models that predicted the same response variable, what might I want to do to incorporate all of the models? Would you expect this to perform better than an individual model or worse?
+
+Answer:
+
+16 Given that you have wifi data in your office, how would you determine which rooms and areas are underutilized and overutilized?
+
+Answer: 
+
+17 How could you use GPS data from a car to determine the quality of a driver?
+
+Answer:
+
+18 Given accelerometer, altitude, and fuel usage data from a car, how would you determine the optimum acceleration pattern to drive over hills?
+
+Answer:
+
+19 Given position data of NBA players in a season’s games, how would you evaluate a basketball player’s defensive ability?
+
+Answer: Define a perimeter for the given player, and then find those NBA players within the perimeter, calculating their offensive statistics such as scoring and assists relative to the team or league average.
+
+20 How would you quantify the influence of a Twitter user?
+
+Answer: The difference between the number of followers and the number following. We would not use the absolute value of the number of followers because of tit-for-tat bots.
+
+21 Given location data of golf balls in games, how would you construct a model that can advise golfers where to aim?
+
+Answer:
+
+22 You have 100 mathletes and 100 math problems. Each mathlete gets to choose 10 problems to solve. Given data on who got what problem correct, how would you rank the problems in terms of difficulty?
+
+Answer:
+
+23 You have 5000 people that rank 10 sushis in terms of saltiness. How would you aggregate this data to estimate the true saltiness rank in each sushi?
+
+Answer:
+
+24 Given data on congressional bills and which congressional representatives co-sponsored the bills, how would you determine which other representatives are most similar to yours in voting behavior? How would you evaluate who is the most liberal? Most republican? Most bipartisan?
+
+Answer:
+
+25 How would you come up with an algorithm to detect plagiarism in online content?
+
+Answer:
+
+26 You have data on all purchases of customers at a grocery store. Describe to me how you would program an algorithm that would cluster the customers into groups. How would you determine the appropriate number of clusters to include?
+
+Answer:
+
+27 Let’s say you’re building the recommended music engine at Spotify to recommend people music based on past listening history. How would you approach this problem?
+
+Answer:
+
+
+PRODUCT METRICS (15 QUESTIONS)
+
+The best choices of engagement metrics are those that benefit both the company and the users while correlating highly with revenue. Pageviews and daily actives would be appropriate for an advertising-driven product, and metrics such as number of purchases or conversion rate would be appropriate for any product that sells services and other products.
+
+
+1 What would be good metrics of success for an advertising-driven consumer product? (Buzzfeed, YouTube, Google Search, etc.) A service-driven consumer product? (Uber, Flickr, Venmo, etc.)
+
+Answer:
+
+2 What would be good metrics of success for a productivity tool? (Evernote, Asana, Google Docs, etc.) A MOOC? (edX, Coursera, Udacity, etc.)
+
+Answer:
+
+3 What would be good metrics of success for an e-commerce product? (Etsy, Groupon, Birchbox, etc.) A subscrip- tion product? (Netflix, Birchbox, Hulu, etc.) Premium subscriptions? (OKCupid, LinkedIn, Spotify, etc.)
+
+Answer:
+
+4 What would be good metrics of success for a consumer product that relies heavily on engagement and interaction? (Snapchat, Pinterest, Facebook, etc.) A messaging product? (GroupMe, Hangouts, Snapchat, etc.)
+
+Answer:
+
+5 What would be good metrics of success for a product that offered in-app purchases? (Zynga, Angry Birds, other gaming apps)
+
+Answer:
+
+6 A certain metric is violating your expectations by going down or up more than you expect. How would you try to identify the cause of the change?
+
+Answer:
+
+7 Growth for total number of tweets sent has been slow this month. What data would you look at to determine the cause of the problem?
+
+Answer:
+
+8 You’re a restaurant and are approached by Groupon to run a deal. What data would you ask from them in order to determine whether or not to do the deal?
+
+Answer:
+
+9 You are tasked with improving the efficiency of a subway system. Where would you start?
+
+Answer:
+
+10 Say you are working on Facebook News Feed. What would be some metrics that you think are important? How would you make the news each person gets more relevant?
+
+Answer:
+
+11 How would you measure the impact that sponsored stories on Facebook News Feed have on user engagement? How would you determine the optimum balance between sponsored stories and organic content on a user’s News Feed?
+
+Answer:
+
+12 You are on the data science team at Uber and you are asked to start thinking about surge pricing. What would be the objectives of such a product and how would you start looking into this?
+
+Answer:
+
+13 Say that you are Netflix. How would you determine what original series you should invest in and create?
+
+Answer:
+
+14 What kind of services would find churn (metric that tracks how many customers leave the service) helpful? How would you calculate churn?
+
+Answer:
+
+15 Let’s say that you’re are scheduling content for a content provider on television. How would you determine the best times to schedule content?
+
+Answer:
+
+
+COMMUNICATION (11 QUESTIONS)
+
+Interviews are about convincing the interviewer that you know what you’re talking about. Naturally, you will gain more ability to do so with a better background in in the topics covered here. Practice teaching a concept, explaining one of your past projects, and discussing your techniques.
+
+
+1 Explain to me a technical concept related to the role that you’re interviewing for.
+
+Answer: Explain the concept of ensemble learning, for example, a random forest.
+
+2 Introduce me to something you’re passionate about.
+
+Answer: I am passionate about finding an edge, having a piece of information that is discovered as a result of ingenuity and sustained effort.
+
+3 How would you explain an A/B test to an engineer with no statistics background? A linear regression?
+
+Answer:
+
+4 How would you explain a confidence interval to an engineer with no statistics background? What does 95% confidence mean?
+
+Answer:
+
+5 How would you explain to a group of senior executives why data is important?
+
+Answer: 
+
+6 Tell me about a data project that you’ve done with a team. What did you add to the group?
+
+Answer: 
+
+7 Tell me about a dataset that you’ve analyzed. What techniques did you find helpful and which ones didn’t work?
+
+Answer: 
+
+8 What’s your favorite algorithm? Can you explain it to me?
+
+Answer: Random Forests.
+
+9 How could you help the generate public understanding towards the importance of using data to generate insights?
+
+Answer:
+
+10 How would you convince a government agency to release their data in a publicly accessible API?
+
+Answer: By identifying the government agency as the source of data, we can raise the profile of the agency through its increased reach.
+
+11 I’m a local business owner operating a small restaurant. Convince me to switch my advertising budget from print to internet.
+
+Answer: With the Internet, you automatically have access to more customers. Instead of finding a small ad buried in a newspaper with declining revenues, people can find you through a variety of services that promote local businesses (Yodle) and restaurants (Yelp). You can use FaceBook to advertise your business and spread your reputation through word-of-mouth.
+
+
+
+
+
+
+
+
