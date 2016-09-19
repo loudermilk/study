@@ -1,0 +1,44 @@
+Interesting visualization, thanks for posting. The OP (sealite) requested suggestions for a posting of a bar chart showing smoking prevalence by sex in top-5 GDP countries (2012). The visualization displays this information in a bar chart with male and female smoking prevalences represented as separate color-contrasting vertical bars grouped by country, from left to right United States, China, Japan, Germany and United Kingdom.
+
+Without neither an accompanying textual description nor visually encoded statistical information, it is unclear what the intended take-away message is. And that is my first suggestion -- to consider the audience and the message you want to convey to them.
+
+The most notable feature of this graph is an apparent the readily apparent sex difference observed in Asian countries (China, Japan) 
+compared to Western coutries (US, UK, Germany). This sex by location interaction manifests as follows: In Western countries we see a slight sex difference in adult smoking prevalence with a greater percentage of males smoking compared to females. Eyeballing the chart it looks like in Western countries adult males smoke about 5% 
+more on average than females. In Asian countries, we note a similar but more pronounced sex effect in adult smoking prevalence. This effect is most striking in China where we see a drastic difference between males and females. From the graph it 
+looks like about 48%  of males in China smoke, whereas only about 3% of females 
+do, a gender difference of around 45%.
+
+I have a few comments that might improve this visualization: 
+
+(1) What is the point you are trying to convey? What is the take-home message
+you want to the viewer to take away from your visualization? If it's the apparent
+dichotomy between Asian and Western countries mentioned above, then visually
+group the countries by Asian/Western. Is there a reason the countries are ordered
+the way they are? Should they be alphabetical instead?
+
+(2) Add some additional context on the nature of the underlying data so that the viz can stand-alone
+more. The title could be altered to reflect the type of data collected -- e.g., 
+"Percentage of Self-report Smokers in Top-5 GDP Countries (2012)". 
+
+(3) y-axis label change spelling from "Percent" to 'Percentage". Consider adding
+more info in label -- e.g., "Precentage of Adults (18+)".
+
+(4) Add error bars and/or indicators of significance - this really depends upon
+your intended audience.
+
+Before speculating on cultural differences between Western and Asian cultures
+driving these gender differences, I would want to know more about how these
+data were collected, as it is unclear from the graph what the nature of the
+underlying data are. For example, these data may have been collected through some 
+sort of survey technique, perhaps an email questionaire. One which asks 
+respondents to fill out a short 20 questions survey, which include typical
+self-report and demographic data such as respondent age, gender, ethnicity, and 
+perhaps additonal questions of primary interest, for example: smoking and 
+drinkking behavior. This sort of self-report data is often unreliable as respondents 
+may not respond truthfully as they want to portray themselves in a more positive
+light, a so-called social desirability bias. The apparent COUNTRY x GENDER 
+interaction shown in the graph could really refelect differences
+in social desirability bias rather than the believed metric, i.e. smoking rates.
+Other studies have reported gender differences in social desirability bias. For
+example Hebert et al. (1997) work suggest that social desirability and 
+social approval biases vary by gender. 
